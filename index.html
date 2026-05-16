@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>风林火山·四方乱斗 - 课间对战</title>
+<style>
+/* ========== 暗色战场主题 ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d0d1a;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, #1a1a35 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, #1a1030 0%, transparent 40%),
+    radial-gradient(ellipse at 20% 80%, #101a2a 0%, transparent 40%),
+    linear-gradient(180deg, #0f0f20 0%, #0d0d1a 50%, #0a0a16 100%);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  color: #e0d5b8;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 背景战场网格纹理 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+  max-width: 620px;
+  width: 100%;
+}
+
+/* ========== 标题 ========== */
+#header {
+  text-align: center;
+  position: relative;
+}
+#header h1 {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #e8d5a0;
+  text-shadow: 0 2px 8px rgba(200,160,60,0.3), 0 0 30px rgba(200,160,60,0.15);
+}
+#brand {
+  font-size: 13px;
+  color: #a09070;
+  letter-spacing: 4px;
+  border: 1.5px solid rgba(180,150,100,0.4);
+  border-radius: 3px;
+  padding: 2px 12px;
+  display: inline-block;
+  margin-top: 6px;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.3);
+}
+
+/* ========== 信息栏 ========== */
+#info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 20px;
+  background: rgba(20,15,10,0.7);
+  border: 1.5px solid rgba(180,150,100,0.3);
+  border-radius: 4px;
+  min-height: 48px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#turn-indicator {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+#turn-indicator .turn-emoji { font-size: 26px; filter: drop-shadow(0 0 8px currentColor); }
+#mountain-counter {
+  font-size: 15px;
+  font-weight: 700;
+  color: #5ba0d9;
+  display: none;
+  text-shadow: 0 0 8px rgba(91,160,217,0.4);
+}
+#mountain-counter .step-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 8px;
+}
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #5ba0d9;
+  box-shadow: 0 0 6px rgba(91,160,217,0.5);
+  transition: all 0.2s;
+}
+.step-dot.used { background: #3a3040; box-shadow: none; }
+
+/* ========== 棋盘容器 ========== */
+#board-container {
+  position: relative;
+  width: 532px;
+  height: 460px;
+  background: radial-gradient(ellipse at center, #2a1f14 0%, #1a1210 60%, #0f0c08 100%);
+  border: 2px solid rgba(180,150,100,0.4);
+  border-radius: 4px;
+  cursor: default;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.6),
+    inset 0 0 60px rgba(200,150,50,0.05),
+    0 0 0 8px rgba(0,0,0,0.2);
+}
+#board-svg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+/* 中心区域高亮 - 金色光晕（呼吸动画） */
+.center-zone {
+  position: absolute;
+  background: radial-gradient(ellipse at center, rgba(255,180,40,0.18) 0%, rgba(255,180,40,0.04) 60%, transparent 100%);
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: inset 0 0 30px rgba(255,180,40,0.1);
+  animation: center-glow 4s ease-in-out infinite alternate;
+}
+@keyframes center-glow {
+  from { background: radial-gradient(ellipse at center, rgba(255,180,40,0.12) 0%, rgba(255,180,40,0.02) 60%, transparent 100%); }
+  to { background: radial-gradient(ellipse at center, rgba(255,180,40,0.22) 0%, rgba(255,180,40,0.06) 60%, transparent 100%); }
+}
+
+/* ========== 交叉点 ========== */
+.board-point {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(200,180,150,0.4);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 1;
+  transition: all 0.15s;
+  box-shadow: 0 0 4px rgba(200,180,150,0.2);
+}
+.board-point:hover {
+  background: rgba(220,200,160,0.7);
+  box-shadow: 0 0 10px rgba(200,180,150,0.4);
+}
+.board-point.valid-move {
+  background: rgba(46, 204, 113, 0.85);
+  width: 20px;
+  height: 20px;
+  box-shadow: 0 0 12px rgba(46, 204, 113, 0.6), 0 0 24px rgba(46, 204, 113, 0.3);
+  z-index: 3;
+  animation: pulse-green 0.7s infinite alternate;
+}
+.board-point.valid-attack {
+  background: rgba(255, 50, 30, 0.9);
+  width: 20px;
+  height: 20px;
+  box-shadow: 0 0 14px rgba(255, 50, 30, 0.7), 0 0 28px rgba(255, 50, 30, 0.3);
+  z-index: 3;
+  animation: pulse-red 0.6s infinite alternate;
+}
+.board-point.trap-target {
+  background: rgba(39, 174, 96, 0.75);
+  width: 20px;
+  height: 20px;
+  box-shadow: 0 0 12px rgba(39, 174, 96, 0.6);
+  z-index: 3;
+  animation: pulse-green 0.8s infinite alternate;
+}
+@keyframes pulse-green {
+  from { box-shadow: 0 0 6px rgba(46, 204, 113, 0.5), 0 0 16px rgba(46, 204, 113, 0.2); }
+  to { box-shadow: 0 0 14px rgba(46, 204, 113, 0.8), 0 0 30px rgba(46, 204, 113, 0.4); }
+}
+@keyframes pulse-red {
+  from { box-shadow: 0 0 6px rgba(255, 50, 30, 0.5), 0 0 16px rgba(255, 50, 30, 0.2); }
+  to { box-shadow: 0 0 16px rgba(255, 50, 30, 0.9), 0 0 32px rgba(255, 50, 30, 0.5); }
+}
+
+/* ========== 棋子 - 3D凸起效果 ========== */
+.piece {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 23px;
+  line-height: 1;
+  border: 2.5px solid;
+  transition: transform 0.12s, box-shadow 0.12s, border-width 0.12s;
+  /* 3D凸起效果 */
+  box-shadow:
+    0 5px 0 0 rgba(0,0,0,0.35),
+    0 7px 16px rgba(0,0,0,0.5),
+    inset 0 2px 0 rgba(255,255,255,0.15);
+  background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.08) 100%);
+}
+.piece .hp {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: -2px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.piece.fire  {
+  border-color: #ff3b30;
+  color: #ff6b60;
+  background-color: rgba(180,30,20,0.85);
+  box-shadow: 0 5px 0 0 rgba(150,20,10,0.5), 0 7px 16px rgba(0,0,0,0.5), 0 0 20px rgba(255,60,40,0.2), inset 0 2px 0 rgba(255,255,255,0.12);
+}
+.piece.forest {
+  border-color: #34c759;
+  color: #5ddb78;
+  background-color: rgba(20,120,40,0.85);
+  box-shadow: 0 5px 0 0 rgba(15,90,30,0.5), 0 7px 16px rgba(0,0,0,0.5), 0 0 20px rgba(52,199,89,0.15), inset 0 2px 0 rgba(255,255,255,0.12);
+}
+.piece.wind {
+  border-color: #ffcc00;
+  color: #ffdd40;
+  background-color: rgba(160,120,10,0.85);
+  box-shadow: 0 5px 0 0 rgba(130,90,5,0.5), 0 7px 16px rgba(0,0,0,0.5), 0 0 20px rgba(255,204,0,0.2), inset 0 2px 0 rgba(255,255,255,0.12);
+}
+.piece.mountain {
+  border-color: #4a90d9;
+  color: #70b0ee;
+  background-color: rgba(20,60,120,0.85);
+  box-shadow: 0 5px 0 0 rgba(15,45,90,0.5), 0 7px 16px rgba(0,0,0,0.5), 0 0 20px rgba(74,144,217,0.2), inset 0 2px 0 rgba(255,255,255,0.12);
+}
+
+.piece.current-faction {
+  box-shadow: 0 5px 0 0 rgba(0,0,0,0.35), 0 7px 16px rgba(0,0,0,0.5), 0 0 22px 4px currentColor, inset 0 2px 0 rgba(255,255,255,0.15);
+}
+
+.piece.selected {
+  border-color: #ff9500 !important;
+  border-width: 3.5px;
+  transform: translate(-50%, -50%) scale(1.14);
+  z-index: 10;
+  box-shadow: 0 6px 0 0 rgba(180,100,0,0.5), 0 8px 20px rgba(0,0,0,0.6), 0 0 0 5px rgba(255,149,0,0.35), 0 0 30px rgba(255,149,0,0.5);
+}
+
+/* 山阵营可攻击目标 - 红色脉冲光晕 */
+.piece.attackable {
+  animation: pulse-attack 0.55s infinite alternate;
+  box-shadow: 0 5px 0 0 rgba(180,20,10,0.5), 0 0 16px 5px rgba(255,40,20,0.8), 0 0 30px rgba(255,40,20,0.5) !important;
+  border-color: #ff2222 !important;
+  z-index: 6;
+}
+@keyframes pulse-attack {
+  from { box-shadow: 0 5px 0 0 rgba(180,20,10,0.5), 0 0 10px 3px rgba(255,40,20,0.6), 0 0 20px rgba(255,40,20,0.3); }
+  to { box-shadow: 0 5px 0 0 rgba(180,20,10,0.5), 0 0 22px 8px rgba(255,40,20,1), 0 0 40px rgba(255,40,20,0.7); }
+}
+
+/* ========== 陷阱 ========== */
+.trap {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(39, 174, 96, 0.4);
+  border: 1.5px solid rgba(39, 174, 96, 0.5);
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  cursor: default;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(39,174,96,0.2);
+}
+.trap.forest-visible {
+  background: rgba(39, 174, 96, 0.7);
+  border-color: rgba(39, 174, 96, 0.9);
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0 12px rgba(39,174,96,0.5);
+}
+.trap.detonatable {
+  background: rgba(255, 30, 20, 0.8) !important;
+  border-color: rgba(255, 40, 30, 1) !important;
+  animation: pulse-red 0.6s infinite alternate;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0 16px rgba(255,30,20,0.7) !important;
+}
+
+/* ========== 方向箭头 ========== */
+.dir-arrow {
+  position: absolute;
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(20,15,10,0.9);
+  border: 2px solid rgba(255,100,60,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: #ff6040;
+  transition: all 0.1s;
+  pointer-events: auto;
+  box-shadow: 0 0 14px rgba(255,80,40,0.4);
+}
+.dir-arrow:hover {
+  transform: translate(-50%, -50%) scale(1.25);
+  background: rgba(40,15,5,0.95);
+  border-color: #ff4444;
+  box-shadow: 0 0 24px rgba(255,60,30,0.7);
+}
+
+/* ========== 操作按钮栏 ========== */
+#action-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 44px;
+}
+.chalk-btn {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 9px 22px;
+  background: rgba(30,20,15,0.8);
+  border: 1.5px solid rgba(180,150,100,0.4);
+  border-radius: 4px;
+  color: #d0c0a0;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.chalk-btn:hover {
+  background: rgba(50,35,20,0.9);
+  border-color: rgba(220,180,120,0.7);
+  color: #f0e0c0;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.5), 0 0 16px rgba(200,160,80,0.2);
+}
+.chalk-btn:active {
+  background: rgba(60,40,20,0.95);
+  transform: translateY(1px);
+}
+.chalk-btn.active {
+  background: rgba(255,149,0,0.2);
+  border-color: #ff9500;
+  color: #ffaa33;
+  box-shadow: 0 0 14px rgba(255,149,0,0.3);
+}
+
+/* ========== 消息区 ========== */
+#message-area {
+  font-size: 14px;
+  color: #b0a080;
+  text-align: center;
+  min-height: 22px;
+  padding: 2px 10px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* ========== 弹窗 ========== */
+.overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(3px);
+}
+.overlay-content {
+  background: linear-gradient(180deg, #1e1810 0%, #151210 100%);
+  border: 2px solid rgba(200,160,80,0.5);
+  border-radius: 6px;
+  padding: 32px 40px;
+  text-align: center;
+  min-width: 300px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 60px rgba(200,160,80,0.1);
+}
+.overlay-content h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #e0d0a0;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+#order-display {
+  font-size: 17px;
+  margin: 12px 0 20px;
+  line-height: 2.2;
+}
+#order-display .order-item {
+  display: inline-block;
+  margin: 0 6px;
+  padding: 5px 14px;
+  background: rgba(40,30,20,0.6);
+  border: 1.5px solid rgba(180,150,100,0.3);
+  border-radius: 3px;
+  color: #d0c0a0;
+}
+#victory-emoji {
+  font-size: 56px;
+  display: block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 20px currentColor);
+}
+#start-btn, #restart-btn {
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 11px 36px;
+  background: rgba(180,130,50,0.2);
+  border: 2px solid rgba(200,160,80,0.6);
+  border-radius: 4px;
+  color: #e0d0a0;
+  cursor: pointer;
+  letter-spacing: 3px;
+  transition: all 0.15s;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+}
+#start-btn:hover, #restart-btn:hover {
+  background: rgba(200,150,60,0.35);
+  border-color: rgba(240,200,100,0.8);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 24px rgba(200,160,80,0.3);
+}
+
+/* ========== 闪烁特效（增强版） ========== */
+.flash-fire {
+  animation: flash-fire-anim 0.35s ease-out;
+  border-radius: 3px;
+}
+.flash-explosion {
+  animation: flash-explosion-anim 0.5s ease-out;
+  border-radius: 3px;
+}
+.flash-wind {
+  animation: flash-wind-anim 0.35s ease-out;
+  border-radius: 3px;
+}
+.flash-mountain {
+  animation: flash-mountain-anim 0.35s ease-out;
+  border-radius: 3px;
+}
+@keyframes flash-fire-anim {
+  0% { background: rgba(255, 50, 20, 0.9); box-shadow: 0 0 20px rgba(255,50,20,0.8); }
+  100% { background: rgba(255, 50, 20, 0); box-shadow: none; }
+}
+@keyframes flash-explosion-anim {
+  0% { background: rgba(255, 30, 10, 0.95); box-shadow: 0 0 30px rgba(255,30,10,0.9); }
+  50% { background: rgba(255, 80, 30, 0.8); box-shadow: 0 0 40px rgba(255,80,30,0.7); }
+  100% { background: rgba(255, 30, 10, 0); box-shadow: none; }
+}
+@keyframes flash-wind-anim {
+  0% { background: rgba(255, 200, 0, 0.85); box-shadow: 0 0 20px rgba(255,200,0,0.7); }
+  100% { background: rgba(255, 200, 0, 0); box-shadow: none; }
+}
+@keyframes flash-mountain-anim {
+  0% { background: rgba(60, 140, 220, 0.85); box-shadow: 0 0 20px rgba(60,140,220,0.7); }
+  100% { background: rgba(60, 140, 220, 0); box-shadow: none; }
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 560px) {
+  #board-container {
+    transform: scale(0.72);
+    transform-origin: top center;
+    margin-bottom: -100px;
+  }
+  #header h1 { font-size: 23px; letter-spacing: 2px; }
+  #app { gap: 8px; padding: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <h1>风林火山·四方乱斗</h1>
+    <span id="brand">课间对战</span>
+  </div>
+
+  <div id="info-bar">
+    <div id="turn-indicator"></div>
+    <div id="mountain-counter"></div>
+  </div>
+
+  <div id="board-container">
+    <svg id="board-svg"></svg>
+    <div class="center-zone" id="center-zone"></div>
+    <div id="points-layer"></div>
+    <div id="pieces-layer"></div>
+    <div id="traps-layer"></div>
+    <div id="effects-layer"></div>
+    <div id="arrows-layer"></div>
+  </div>
+
+  <div id="action-bar"></div>
+  <div id="message-area"></div>
+</div>
+
+<!-- 开始画面 -->
+<div id="start-overlay" class="overlay">
+  <div class="overlay-content">
+    <h2>⚔️ 行动顺序</h2>
+    <div id="order-display"></div>
+    <button id="start-btn" onclick="startGame()">开始对战</button>
+  </div>
+</div>
+
+<!-- 胜利画面 -->
+<div id="victory-overlay" class="overlay" style="display:none">
+  <div class="overlay-content">
+    <span id="victory-emoji"></span>
+    <h2 id="victory-message"></h2>
+    <button id="restart-btn" onclick="restartGame()">再来一局</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 配置数据
+// ============================================================
+
+const CELL = 64;       // 格子间距
+const OFF_X = 42;      // 左偏移
+const OFF_Y = 46;      // 上偏移
+
+// 33个点位定义: id, col, row, zone
+const POINTS = [
+  // 中心田字格 (zone: 'center')
+  {id:0, col:3, row:2, zone:'center'}, {id:1, col:4, row:2, zone:'center'}, {id:2, col:5, row:2, zone:'center'},
+  {id:3, col:3, row:3, zone:'center'}, {id:4, col:4, row:3, zone:'center'}, {id:5, col:5, row:3, zone:'center'},
+  {id:6, col:3, row:4, zone:'center'}, {id:7, col:4, row:4, zone:'center'}, {id:8, col:5, row:4, zone:'center'},
+  // 上方田字格 (zone: 'top') - 火阵营
+  {id:9, col:3, row:0, zone:'top'}, {id:10, col:4, row:0, zone:'top'}, {id:11, col:5, row:0, zone:'top'},
+  {id:12, col:3, row:1, zone:'top'}, {id:13, col:4, row:1, zone:'top'}, {id:14, col:5, row:1, zone:'top'},
+  // 下方田字格 (zone: 'bottom') - 山阵营
+  {id:15, col:3, row:5, zone:'bottom'}, {id:16, col:4, row:5, zone:'bottom'}, {id:17, col:5, row:5, zone:'bottom'},
+  {id:18, col:3, row:6, zone:'bottom'}, {id:19, col:4, row:6, zone:'bottom'}, {id:20, col:5, row:6, zone:'bottom'},
+  // 左方田字格 (zone: 'left') - 林阵营（对称布局，cols 1-3）
+  {id:21, col:1, row:2, zone:'left'}, {id:22, col:2, row:2, zone:'left'},
+  {id:23, col:1, row:3, zone:'left'}, {id:24, col:2, row:3, zone:'left'},
+  {id:25, col:1, row:4, zone:'left'}, {id:26, col:2, row:4, zone:'left'},
+  // 右方田字格 (zone: 'right') - 风阵营
+  {id:27, col:6, row:2, zone:'right'}, {id:28, col:7, row:2, zone:'right'},
+  {id:29, col:6, row:3, zone:'right'}, {id:30, col:7, row:3, zone:'right'},
+  {id:31, col:6, row:4, zone:'right'}, {id:32, col:7, row:4, zone:'right'},
+];
+
+// 相邻关系（52条边）
+const ADJ = {
+  0:[1,3], 1:[0,2,4], 2:[1,5], 3:[0,4,6], 4:[1,3,5,7], 5:[2,4,8],
+  6:[3,7], 7:[4,6,8], 8:[5,7],
+  // 上方
+  9:[10,12], 10:[9,11,13], 11:[10,14],
+  12:[9,13,0], 13:[10,12,14,1], 14:[11,13,2],
+  // 下方
+  15:[16,18,6], 16:[15,17,19,7], 17:[16,20,8],
+  18:[15,19], 19:[16,18,20], 20:[17,19],
+  // 左方
+  21:[22,23], 22:[21,24,0], 23:[21,24,25], 24:[22,23,26,3], 25:[23,26], 26:[24,25,6],
+  // 右方
+  27:[28,29,2], 28:[27,30], 29:[27,30,31,5], 30:[28,29,32], 31:[29,32,8], 32:[30,31],
+};
+
+// 阵营定义
+const FACTIONS = {
+  fire:     { key:'fire',     name:'火', emoji:'🔥', color:'#e74c3c', slogan:'侵掠如火', zone:'top' },
+  forest:   { key:'forest',   name:'林', emoji:'🌲', color:'#27ae60', slogan:'其徐如林', zone:'left' },
+  wind:     { key:'wind',     name:'风', emoji:'🌀', color:'#f1c40f', slogan:'其疾如风', zone:'right' },
+  mountain: { key:'mountain', name:'山', emoji:'⛰️', color:'#2980b9', slogan:'不动如山', zone:'bottom' },
+};
+
+// 克制关系: attacker -> { defender: multiplier }
+const COUNTER = {
+  fire:     { wind:1.25, mountain:0.75 },
+  forest:   { mountain:1.25, wind:0.75 },
+  wind:     { forest:1.25, fire:0.75 },
+  mountain: { fire:1.25, forest:0.75 },
+};
+
+// 初始位置（每个阵营6颗棋子，放在自己田字格不与中心共享的6个点上）
+const INIT_POS = {
+  fire:     [9,10,11,12,13,14],
+  forest:   [21,22,23,24,25,26],
+  wind:     [27,28,29,30,31,32],
+  mountain: [15,16,17,18,19,20],
+};
+
+// 风技能-马走日8个偏移
+const HORSE_OFFSETS = [
+  [-1,-2],[1,-2],[-2,-1],[2,-1],
+  [-2,1],[2,1],[-1,2],[1,2],
+];
+
+// 方向定义: [dcol, drow, label]
+const DIRECTIONS = [
+  [0,-1,'↑'],[0,1,'↓'],[-1,0,'←'],[1,0,'→'],
+];
+
+// ============================================================
+// 全局状态
+// ============================================================
+
+let gameState = {};
+let pointMap = {};      // "col,row" -> pointId
+let pointById = {};     // id -> point object
+
+function buildPointLookups() {
+  pointMap = {};
+  pointById = {};
+  for (const p of POINTS) {
+    pointMap[`${p.col},${p.row}`] = p.id;
+    pointById[p.id] = p;
+  }
+}
+
+// ============================================================
+// DOM引用缓存
+// ============================================================
+
+let dom = {};
+
+function cacheDom() {
+  dom.board = document.getElementById('board-container');
+  dom.svg = document.getElementById('board-svg');
+  dom.centerZone = document.getElementById('center-zone');
+  dom.pointsLayer = document.getElementById('points-layer');
+  dom.piecesLayer = document.getElementById('pieces-layer');
+  dom.trapsLayer = document.getElementById('traps-layer');
+  dom.effectsLayer = document.getElementById('effects-layer');
+  dom.arrowsLayer = document.getElementById('arrows-layer');
+  dom.turnIndicator = document.getElementById('turn-indicator');
+  dom.mountainCounter = document.getElementById('mountain-counter');
+  dom.actionBar = document.getElementById('action-bar');
+  dom.messageArea = document.getElementById('message-area');
+  dom.startOverlay = document.getElementById('start-overlay');
+  dom.victoryOverlay = document.getElementById('victory-overlay');
+  dom.orderDisplay = document.getElementById('order-display');
+  dom.victoryEmoji = document.getElementById('victory-emoji');
+  dom.victoryMessage = document.getElementById('victory-message');
+}
+
+// ============================================================
+// 工具函数
+// ============================================================
+
+function pos(col, row) {
+  return { x: col * CELL + OFF_X, y: row * CELL + OFF_Y };
+}
+
+function getPieceAt(pointId) {
+  return gameState.pieces.find(p => p.position === pointId && p.hp > 0);
+}
+
+function getTrapAt(pointId) {
+  return gameState.traps.find(t => t.position === pointId);
+}
+
+function getAlivePieces(faction) {
+  return gameState.pieces.filter(p => p.faction === faction && p.hp > 0);
+}
+
+function isEliminated(faction) {
+  return getAlivePieces(faction).length === 0;
+}
+
+function currentFaction() {
+  if (gameState.turnIndex >= gameState.turnOrder.length) return null;
+  return gameState.turnOrder[gameState.turnIndex];
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 克制系数
+function counterMultiplier(attackerFaction, defenderFaction) {
+  if (!COUNTER[attackerFaction]) return 1.0;
+  return COUNTER[attackerFaction][defenderFaction] || 1.0;
+}
+
+// 计算实际伤害
+function calcDamage(attackerFaction, defenderFaction, baseDamage) {
+  return Math.floor(baseDamage * counterMultiplier(attackerFaction, defenderFaction));
+}
+
+// ============================================================
+// 初始化游戏
+// ============================================================
+
+function initGame() {
+  buildPointLookups();
+  cacheDom();
+
+  // 随机行动顺序
+  const order = shuffle(['fire','forest','wind','mountain']);
+
+  gameState = {
+    phase: 'init',
+    turnOrder: order,
+    turnIndex: 0,
+    pieces: [],
+    traps: [],
+    selectedPieceId: null,
+    actionMode: null,        // 'move'|'attack'|'trap_place'|'trap_detonate'|'fire_dir'|'mountain'
+    mountainRemaining: 0,
+    mountainPieceId: null,
+    eliminated: [],
+    validTargets: [],        // 当前合法目标点
+    firePieceId: null,       // 火技能选中的棋子
+  };
+
+  // 创建棋子
+  let pieceId = 0;
+  for (const [faction, posList] of Object.entries(INIT_POS)) {
+    for (const pt of posList) {
+      gameState.pieces.push({
+        id: pieceId++,
+        faction: faction,
+        hp: 4,
+        position: pt,
+      });
+    }
+  }
+
+  renderBoard();
+  renderTurnOrder();
+  updateUI();
+  showMessage('行动顺序已随机决定，点击"开始对战"');
+}
+
+function renderTurnOrder() {
+  let html = '';
+  gameState.turnOrder.forEach((f, i) => {
+    const fac = FACTIONS[f];
+    html += `<span class="order-item">${i+1}. ${fac.emoji}${fac.name}</span>`;
+  });
+  dom.orderDisplay.innerHTML = html;
+  dom.startOverlay.style.display = 'flex';
+  dom.victoryOverlay.style.display = 'none';
+}
+
+function startGame() {
+  gameState.phase = 'playing';
+  // 跳过已淘汰的阵营
+  advanceToAliveFaction();
+  dom.startOverlay.style.display = 'none';
+  updateUI();
+  showMessage('对战开始！' + getCurrentFactionInfo() + '的回合');
+}
+
+function restartGame() {
+  clearAllDynamicElements();
+  initGame();
+}
+
+// ============================================================
+// 棋盘渲染
+// ============================================================
+
+function renderBoard() {
+  renderSVGLines();
+  renderCenterZone();
+  renderPoints();
+  renderAllPieces();
+  renderTraps();
+}
+
+function renderSVGLines() {
+  const drawn = new Set();
+  let lines = '';
+  for (const [aStr, neighbors] of Object.entries(ADJ)) {
+    const a = parseInt(aStr);
+    const pa = pointById[a];
+    const { x: x1, y: y1 } = pos(pa.col, pa.row);
+    for (const b of neighbors) {
+      const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      const pb = pointById[b];
+      const { x: x2, y: y2 } = pos(pb.col, pb.row);
+      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(200,165,100,0.5)" stroke-width="2" stroke-linecap="round"/>`;
+    }
+  }
+  dom.svg.innerHTML = lines;
+}
+
+function renderCenterZone() {
+  const topLeft = pos(2.5, 1.5);
+  const w = CELL * 3;
+  const h = CELL * 3;
+  dom.centerZone.style.cssText = `
+    left:${topLeft.x}px; top:${topLeft.y}px;
+    width:${w}px; height:${h}px;
+  `;
+}
+
+function renderPoints() {
+  let html = '';
+  for (const p of POINTS) {
+    const { x, y } = pos(p.col, p.row);
+    html += `<div class="board-point" id="pt-${p.id}"
+      style="left:${x}px;top:${y}px"
+      data-point="${p.id}"></div>`;
+  }
+  dom.pointsLayer.innerHTML = html;
+
+  // 绑定点击
+  for (const p of POINTS) {
+    document.getElementById(`pt-${p.id}`).addEventListener('click', (e) => {
+      e.stopPropagation();
+      onPointClick(p.id);
+    });
+  }
+}
+
+function renderAllPieces() {
+  let html = '';
+  const cf = currentFaction();
+  for (const piece of gameState.pieces) {
+    if (piece.hp <= 0) continue;
+    const pt = pointById[piece.position];
+    const { x, y } = pos(pt.col, pt.row);
+    const fac = FACTIONS[piece.faction];
+    const selClass = piece.id === gameState.selectedPieceId ? ' selected' : '';
+    const curClass = (cf === piece.faction && gameState.phase === 'playing') ? ' current-faction' : '';
+    // 山阵营攻击目标高亮
+    const atkClass = (cf === 'mountain' && gameState._mountainAttacks?.includes(piece.position)) ? ' attackable' : '';
+    html += `<div class="piece ${piece.faction}${selClass}${curClass}${atkClass}" id="piece-${piece.id}"
+      style="left:${x}px;top:${y}px;--piece-color:${fac.color}"
+      data-piece="${piece.id}">
+      ${fac.emoji}<span class="hp">${piece.hp}</span>
+    </div>`;
+  }
+  dom.piecesLayer.innerHTML = html;
+
+  // 绑定点击
+  for (const piece of gameState.pieces) {
+    if (piece.hp <= 0) continue;
+    document.getElementById(`piece-${piece.id}`).addEventListener('click', (e) => {
+      e.stopPropagation();
+      onPieceClick(piece.id);
+    });
+  }
+}
+
+function renderTraps() {
+  let html = '';
+  const cf = currentFaction();
+  // 陷阱对所有阵营可见，但只有林阵营能引爆
+  const isForest = (cf === 'forest');
+
+  for (const trap of gameState.traps) {
+    const pt = pointById[trap.position];
+    const { x, y } = pos(pt.col, pt.row);
+    const detClass = (isForest && gameState.actionMode === 'trap_detonate') ? ' detonatable' : '';
+    const visClass = isForest ? ' forest-visible' : '';
+    html += `<div class="trap${detClass}${visClass}" id="trap-${trap.id}"
+      style="left:${x}px;top:${y}px;"
+      data-trap="${trap.id}" data-point="${trap.position}"></div>`;
+  }
+  dom.trapsLayer.innerHTML = html;
+
+  // 只有林阵营在引爆模式下陷阱可点击
+  if (isForest && gameState.actionMode === 'trap_detonate') {
+    for (const trap of gameState.traps) {
+      const el = document.getElementById(`trap-${trap.id}`);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onTrapClick(trap.id);
+        });
+      }
+    }
+  }
+}
+
+function updatePieceRender() {
+  renderAllPieces();
+  renderTraps();
+  renderArrows();
+}
+
+// ============================================================
+// 交互处理
+// ============================================================
+
+function onPieceClick(pieceId) {
+  if (gameState.phase !== 'playing') return;
+
+  const piece = gameState.pieces.find(p => p.id === pieceId);
+  if (!piece || piece.hp <= 0) return;
+
+  const cf = currentFaction();
+  if (!cf) return;
+
+  // 山阵营特殊：已在走打一体模式时，点击敌方棋子=攻击，点击己方棋子=切换
+  if (cf === 'mountain' && gameState.actionMode === 'mountain') {
+    if (piece.faction !== 'mountain') {
+      // 直接检查是否与选中的山棋子相邻
+      const mPiece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
+      if (mPiece) {
+        const neighbors = ADJ[mPiece.position] || [];
+        if (neighbors.includes(piece.position)) {
+          handleMountainPointClick(piece.position);
+          return;
+        }
+      }
+      showMessage('该棋子不在攻击范围内（需相邻1格）');
+      return;
+    }
+    if (piece.faction === 'mountain') {
+      onMountainPieceClick(pieceId);
+      return;
+    }
+    return;
+  }
+
+  // 只能操作自己阵营的棋子
+  if (piece.faction !== cf) {
+    showMessage('这不是你的棋子');
+    return;
+  }
+
+  // 如果点击的是已选中的棋子，取消操作模式或取消选择
+  if (piece.id === gameState.selectedPieceId) {
+    if (gameState.actionMode) {
+      // 取消当前操作模式，回到棋子选中状态
+      clearActionMode();
+      gameState.actionMode = null;
+      gameState.validTargets = [];
+      updatePieceRender();
+      updateActionButtons();
+      showMessage('已取消操作，请选择操作');
+      return;
+    } else {
+      // 取消选择
+      cancelSelection();
+      return;
+    }
+  }
+
+  // 山阵营特殊处理
+  if (cf === 'mountain') {
+    onMountainPieceClick(pieceId);
+    return;
+  }
+
+  // 选中棋子
+  selectPiece(pieceId);
+}
+
+function selectPiece(pieceId) {
+  clearActionMode();
+  gameState.selectedPieceId = pieceId;
+  gameState.actionMode = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  showMessage('请选择操作');
+}
+
+function onPointClick(pointId) {
+  if (gameState.phase !== 'playing') return;
+
+  const cf = currentFaction();
+  if (!cf) return;
+
+  const mode = gameState.actionMode;
+
+  // 没有操作模式时，检查是否点击了己方棋子所在点
+  if (!mode || mode === null) {
+    const piece = getPieceAt(pointId);
+    if (piece && piece.faction === cf) {
+      onPieceClick(piece.id);
+    }
+    return;
+  }
+
+  switch (mode) {
+    case 'move':
+      if (gameState.validTargets.includes(pointId)) {
+        executeMove(pointId);
+      }
+      break;
+    case 'trap_place':
+      if (gameState.validTargets.includes(pointId)) {
+        placeTrap(pointId);
+      }
+      break;
+    case 'trap_detonate':
+      // 陷阱引爆通过点击陷阱触发，点空位无效
+      break;
+    case 'mountain':
+      handleMountainPointClick(pointId);
+      break;
+  }
+}
+
+function onTrapClick(trapId) {
+  if (gameState.actionMode !== 'trap_detonate') return;
+  const trap = gameState.traps.find(t => t.id === trapId);
+  if (!trap) return;
+  detonateTrap(trap);
+}
+
+// ============================================================
+// 操作按钮
+// ============================================================
+
+function updateActionButtons() {
+  const cf = currentFaction();
+  if (!cf || gameState.phase !== 'playing') {
+    dom.actionBar.innerHTML = '';
+    return;
+  }
+
+  if (!gameState.selectedPieceId || gameState.selectedPieceId === null) {
+    dom.actionBar.innerHTML = '<span style="color:#8b7355;font-size:14px;">点击己方棋子开始操作</span>';
+    return;
+  }
+
+  let html = '';
+
+  if (cf === 'mountain') {
+    // 山阵营走打一体模式，显示结束回合按钮
+    html += `<button class="chalk-btn" onclick="endMountainTurn()">结束回合</button>`;
+    html += `<button class="chalk-btn" onclick="cancelSelection()">换棋子</button>`;
+  } else if (cf === 'forest') {
+    // 林阵营三选一
+    html += `<button class="chalk-btn${gameState.actionMode==='move'?' active':''}" onclick="enterMoveMode()">移动</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='trap_place'?' active':''}" onclick="enterTrapPlaceMode()">布陷阱</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='trap_detonate'?' active':''}" onclick="enterTrapDetonateMode()">引爆</button>`;
+    if (gameState.actionMode) {
+      html += `<button class="chalk-btn" onclick="cancelActionMode()" style="margin-left:8px;opacity:0.7;">取消</button>`;
+    }
+  } else {
+    // 火、风阵营二选一
+    html += `<button class="chalk-btn${gameState.actionMode==='move'?' active':''}" onclick="enterMoveMode()">移动</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='attack'||gameState.actionMode==='fire_dir'?' active':''}" onclick="enterAttackMode()">攻击</button>`;
+    if (gameState.actionMode) {
+      html += `<button class="chalk-btn" onclick="cancelActionMode()" style="margin-left:8px;opacity:0.7;">取消</button>`;
+    }
+  }
+
+  dom.actionBar.innerHTML = html;
+}
+
+function enterMoveMode() {
+  if (!gameState.selectedPieceId) return;
+  const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
+  if (!piece) return;
+
+  gameState.actionMode = 'move';
+  gameState.validTargets = getValidMoves(piece.position);
+  clearHighlights();
+  highlightPoints(gameState.validTargets, 'valid-move');
+  updateActionButtons();
+  showMessage('请点击绿色目标点移动');
+}
+
+function enterAttackMode() {
+  if (!gameState.selectedPieceId) return;
+  const cf = currentFaction();
+
+  if (cf === 'fire') {
+    // 火：显示方向箭头
+    gameState.actionMode = 'fire_dir';
+    gameState.firePieceId = gameState.selectedPieceId;
+    gameState.validTargets = [];
+    clearHighlights();
+    renderArrows();
+    updateActionButtons();
+    showMessage('请点击方向箭头释放火焰');
+  } else if (cf === 'wind') {
+    // 风：直接显示AOE范围并确认
+    gameState.actionMode = 'attack';
+    const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
+    const targets = getWindTargets(piece.position);
+    gameState.validTargets = targets.map(t => t.pointId);
+    clearHighlights();
+    highlightPoints(gameState.validTargets, 'valid-attack');
+    updateActionButtons();
+    // 添加确认按钮
+    dom.actionBar.innerHTML +=
+      `<button class="chalk-btn active" onclick="executeWindSkill()">确认释放风刃</button>`;
+    showMessage('日字型范围已显示，点击确认释放');
+  }
+}
+
+function enterTrapPlaceMode() {
+  if (!gameState.selectedPieceId) return;
+
+  // 找到所有空位
+  const occupied = new Set();
+  for (const piece of gameState.pieces) {
+    if (piece.hp > 0) occupied.add(piece.position);
+  }
+  for (const trap of gameState.traps) {
+    occupied.add(trap.position);
+  }
+
+  const allPoints = POINTS.map(p => p.id);
+  gameState.validTargets = allPoints.filter(id => !occupied.has(id));
+
+  gameState.actionMode = 'trap_place';
+  clearHighlights();
+  highlightPoints(gameState.validTargets, 'trap-target');
+  updateActionButtons();
+  showMessage('请点击空位放置陷阱');
+}
+
+function enterTrapDetonateMode() {
+  if (gameState.traps.length === 0) {
+    showMessage('没有已埋的陷阱');
+    return;
+  }
+
+  gameState.actionMode = 'trap_detonate';
+  gameState.validTargets = [];
+  clearHighlights();
+  updatePieceRender(); // 重新渲染陷阱（显示为可引爆状态）
+  updateActionButtons();
+  showMessage('请点击要引爆的陷阱');
+}
+
+function cancelSelection() {
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.mountainPieceId = null;
+  gameState.mountainRemaining = 0;
+  updatePieceRender();
+  updateActionButtons();
+  updateMountainDisplay();
+  showMessage('已取消选择');
+}
+
+function cancelActionMode() {
+  clearActionMode();
+  gameState.actionMode = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  showMessage('请选择操作');
+}
+
+// ============================================================
+// 移动逻辑
+// ============================================================
+
+function getValidMoves(pointId) {
+  const neighbors = ADJ[pointId] || [];
+  const occupied = new Set();
+  for (const piece of gameState.pieces) {
+    if (piece.hp > 0) occupied.add(piece.position);
+  }
+  return neighbors.filter(id => !occupied.has(id));
+}
+
+function executeMove(toPointId) {
+  const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
+  if (!piece) return;
+
+  const fromId = piece.position;
+  piece.position = toPointId;
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  showMessage(`${FACTIONS[piece.faction].emoji} 移动到位置${toPointId}`);
+  nextTurn();
+}
+
+// ============================================================
+// 🔥火技能 - 火焰贯穿
+// ============================================================
+
+function getFireTarget(pieceId, dcol, drow) {
+  const piece = gameState.pieces.find(p => p.id === pieceId);
+  if (!piece) return null;
+
+  const pt = pointById[piece.position];
+  let col = pt.col + dcol;
+  let row = pt.row + drow;
+
+  while (true) {
+    const targetPtId = pointMap[`${col},${row}`];
+    if (targetPtId === undefined) return null; // 飞出棋盘
+    const targetPiece = getPieceAt(targetPtId);
+    if (targetPiece) {
+      return { pointId: targetPtId, piece: targetPiece };
+    }
+    col += dcol;
+    row += drow;
+  }
+}
+
+function executeFireSkill(dcol, drow) {
+  const pieceId = gameState.firePieceId;
+  if (!pieceId) return;
+
+  const piece = gameState.pieces.find(p => p.id === pieceId);
+  if (!piece) return;
+
+  const target = getFireTarget(pieceId, dcol, drow);
+  const dirLabel = dcol===0 ? (drow===-1?'上':'下') : (dcol===-1?'左':'右');
+
+  clearArrows();
+
+  if (!target) {
+    showMessage(`🔥火焰向${dirLabel}方飞出棋盘，未命中任何棋子`);
+  } else {
+    const damage = calcDamage(piece.faction, target.piece.faction, 2);
+    applyDamageToPiece(target.piece, damage);
+
+    // 火焰线闪烁特效
+    drawFireLine(piece.position, target.pointId);
+
+    const counterInfo = getCounterInfo(piece.faction, target.piece.faction);
+    showMessage(`🔥火焰贯穿${dirLabel}方！对${FACTIONS[target.piece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+  }
+
+  gameState.firePieceId = null;
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  updatePieceRender();
+  updateActionButtons();
+  checkAndNextTurn();
+}
+
+function drawFireLine(fromPointId, toPointId) {
+  const fromPt = pointById[fromPointId];
+  const toPt = pointById[toPointId];
+  const fromPos = pos(fromPt.col, fromPt.row);
+  const toPos = pos(toPt.col, toPt.row);
+
+  const line = document.createElement('div');
+  line.style.cssText = `
+    position:absolute; z-index:15; pointer-events:none;
+    background:rgba(231,76,60,0.8);
+    transform-origin:left center;
+    height:4px; border-radius:2px;
+    left:${fromPos.x}px; top:${fromPos.y}px;
+    width:${Math.hypot(toPos.x-fromPos.x, toPos.y-fromPos.y)}px;
+    transform:rotate(${Math.atan2(toPos.y-fromPos.y, toPos.x-fromPos.x)}rad);
+    animation:flash-fire-anim 0.35s ease-out forwards;
+  `;
+  dom.effectsLayer.appendChild(line);
+  setTimeout(() => line.remove(), 400);
+
+  // 目标点闪烁
+  flashPoint(toPointId, 'flash-fire');
+}
+
+// ============================================================
+// 🌲林技能 - 布陷阱 / 引爆
+// ============================================================
+
+function placeTrap(pointId) {
+  const trapId = gameState.traps.length > 0 ? Math.max(...gameState.traps.map(t=>t.id)) + 1 : 1;
+  gameState.traps.push({ id: trapId, position: pointId });
+
+  // 绿色圆点出现
+  flashPoint(pointId, 'flash-wind');
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  showMessage(`🌲陷阱已埋在位置${pointId}`);
+  nextTurn();
+}
+
+function detonateTrap(trap) {
+  // 获取陷阱相邻4格
+  const neighbors = ADJ[trap.position] || [];
+  const affectedPoints = [trap.position, ...neighbors];
+
+  // 找出受影响的所有棋子
+  const affectedPieces = [];
+  for (const ptId of affectedPoints) {
+    const piece = getPieceAt(ptId);
+    if (piece) affectedPieces.push(piece);
+  }
+
+  // 造成伤害（林阵营免疫自己的陷阱）
+  for (const piece of affectedPieces) {
+    if (piece.faction === 'forest') continue;
+    const dmg = calcDamage('forest', piece.faction, 2);
+    applyDamageToPiece(piece, dmg);
+  }
+
+  // 爆炸范围闪烁
+  for (const ptId of affectedPoints) {
+    flashPoint(ptId, 'flash-explosion');
+  }
+
+  // 移除陷阱
+  gameState.traps = gameState.traps.filter(t => t.id !== trap.id);
+
+  const hitCount = affectedPieces.filter(p => p.faction !== 'forest').length;
+  showMessage(`💥陷阱引爆！炸到${hitCount}个棋子，各造成2点伤害（林阵营免疫）`);
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  checkAndNextTurn();
+}
+
+// ============================================================
+// 🌀风技能 - 风刃AOE
+// ============================================================
+
+function getWindTargets(pointId) {
+  const pt = pointById[pointId];
+  const targets = [];
+  for (const [dc, dr] of HORSE_OFFSETS) {
+    const col = pt.col + dc;
+    const row = pt.row + dr;
+    const targetPtId = pointMap[`${col},${row}`];
+    if (targetPtId !== undefined) {
+      const piece = getPieceAt(targetPtId);
+      if (piece) {
+        targets.push({ pointId: targetPtId, piece: piece });
+      }
+    }
+  }
+  return targets;
+}
+
+function executeWindSkill() {
+  const pieceId = gameState.selectedPieceId;
+  if (!pieceId) return;
+  const piece = gameState.pieces.find(p => p.id === pieceId);
+  if (!piece) return;
+
+  const targets = getWindTargets(piece.position);
+  let hitCount = 0;
+  const hitPointIds = [];
+
+  for (const target of targets) {
+    const damage = calcDamage(piece.faction, target.piece.faction, 2);
+    applyDamageToPiece(target.piece, damage);
+    hitCount++;
+    hitPointIds.push(target.pointId);
+  }
+
+  // 范围闪烁
+  for (const ptId of hitPointIds) {
+    flashPoint(ptId, 'flash-wind');
+  }
+
+  const selfHit = targets.filter(t => t.piece.faction === piece.faction).length;
+  let msg = `🌀风刃释放！命中${hitCount}个棋子，各造成2伤害`;
+  if (selfHit > 0) msg += `（含${selfHit}个友军误伤）`;
+  showMessage(msg);
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  checkAndNextTurn();
+}
+
+// ============================================================
+// ⛰️山技能 - 走打一体
+// ============================================================
+
+function onMountainPieceClick(pieceId) {
+  const piece = gameState.pieces.find(p => p.id === pieceId);
+  if (!piece || piece.faction !== 'mountain') return;
+
+  // 如果已选中同一棋子，不取消（防止取消后重选重置步数）
+  if (gameState.mountainPieceId === pieceId) {
+    showMessage(`⛰️已选中此棋子，剩余步数：${gameState.mountainRemaining}`);
+    return;
+  }
+
+  // 如果之前选中的棋子已移动过，切换到新棋子会失去剩余步数
+  if (gameState.mountainPieceId !== null && gameState.mountainRemaining < 6) {
+    showMessage('已开始行动，请先结束回合再换棋子');
+    return;
+  }
+
+  // 开始山阵营回合
+  gameState.mountainPieceId = pieceId;
+  gameState.selectedPieceId = pieceId;
+  gameState.mountainRemaining = 6;
+  gameState.actionMode = 'mountain';
+  updateMountainDisplay();
+  showMountainTargets();
+  updatePieceRender();
+  updateActionButtons();
+  showMessage('⛰️走打一体：点击绿色点移动（消耗1步），点击红色点攻击（消耗全部剩余步数）');
+}
+
+function showMountainTargets() {
+  if (!gameState.mountainPieceId) return;
+  const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
+  if (!piece) return;
+
+  clearHighlights();
+
+  const neighbors = ADJ[piece.position] || [];
+  const occupied = new Set();
+  for (const p of gameState.pieces) {
+    if (p.hp > 0) occupied.add(p.position);
+  }
+
+  const moveTargets = [];
+  const attackTargets = [];
+
+  for (const nid of neighbors) {
+    if (occupied.has(nid)) {
+      const enemyPiece = getPieceAt(nid);
+      if (enemyPiece && enemyPiece.faction !== 'mountain') {
+        attackTargets.push(nid);
+      }
+    } else {
+      moveTargets.push(nid);
+    }
+  }
+
+  highlightPoints(moveTargets, 'valid-move');
+  highlightPoints(attackTargets, 'valid-attack');
+
+  gameState._mountainMoves = moveTargets;
+  gameState._mountainAttacks = attackTargets;
+}
+
+function handleMountainPointClick(pointId) {
+  if (gameState._mountainMoves && gameState._mountainMoves.includes(pointId)) {
+    // 移动
+    const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
+    if (!piece) return;
+    piece.position = pointId;
+    gameState.mountainRemaining--;
+
+    if (gameState.mountainRemaining <= 0) {
+      // 步数用完
+      clearActionMode();
+      gameState.selectedPieceId = null;
+      gameState.mountainPieceId = null;
+      gameState.mountainRemaining = 0;
+      updatePieceRender();
+      updateActionButtons();
+      updateMountainDisplay();
+      showMessage('步数已用完，回合结束');
+      nextTurn();
+    } else {
+      updateMountainDisplay();
+      showMountainTargets();
+      updatePieceRender();
+      showMessage(`⛰️移动1格，剩余步数：${gameState.mountainRemaining}`);
+    }
+  } else if (gameState._mountainAttacks && gameState._mountainAttacks.includes(pointId)) {
+    // 攻击
+    executeMountainAttack(pointId);
+  }
+}
+
+function executeMountainAttack(targetPointId) {
+  const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
+  if (!piece) return;
+
+  const targetPiece = getPieceAt(targetPointId);
+  if (!targetPiece) return;
+
+  const baseDamage = gameState.mountainRemaining;
+  const damage = calcDamage('mountain', targetPiece.faction, baseDamage);
+  applyDamageToPiece(targetPiece, damage);
+
+  flashPoint(targetPointId, 'flash-mountain');
+
+  const counterInfo = getCounterInfo('mountain', targetPiece.faction);
+  showMessage(`⛰️山崩地裂！攻击力${baseDamage}，对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.mountainPieceId = null;
+  gameState.mountainRemaining = 0;
+  updatePieceRender();
+  updateActionButtons();
+  updateMountainDisplay();
+  checkAndNextTurn();
+}
+
+function endMountainTurn() {
+  if (gameState.mountainRemaining === 6) {
+    // 检查是否有可执行的操作
+    const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
+    if (piece) {
+      const moves = getValidMoves(piece.position);
+      const neighbors = ADJ[piece.position] || [];
+      const hasAttack = neighbors.some(nid => {
+        const ep = getPieceAt(nid);
+        return ep && ep.faction !== 'mountain' && ep.hp > 0;
+      });
+      if (moves.length > 0 || hasAttack) {
+        showMessage('请至少移动1步或攻击1次');
+        return;
+      }
+    }
+  }
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.mountainPieceId = null;
+  gameState.mountainRemaining = 0;
+  updatePieceRender();
+  updateActionButtons();
+  updateMountainDisplay();
+  showMessage('⛰️回合结束');
+  nextTurn();
+}
+
+function updateMountainDisplay() {
+  const cf = currentFaction();
+  if (cf === 'mountain' && gameState.mountainPieceId !== null && gameState.mountainRemaining > 0) {
+    dom.mountainCounter.style.display = 'block';
+    let dots = '';
+    for (let i = 0; i < 6; i++) {
+      dots += `<span class="step-dot${i >= gameState.mountainRemaining ? ' used' : ''}"></span>`;
+    }
+    dom.mountainCounter.innerHTML = `剩余步数: ${gameState.mountainRemaining}<span class="step-dots">${dots}</span>`;
+  } else {
+    dom.mountainCounter.style.display = 'none';
+  }
+}
+
+// ============================================================
+// 伤害系统
+// ============================================================
+
+function applyDamageToPiece(piece, damage) {
+  piece.hp = Math.max(0, piece.hp - damage);
+}
+
+function getCounterInfo(attackerFaction, defenderFaction) {
+  const mult = counterMultiplier(attackerFaction, defenderFaction);
+  if (mult > 1) return '(克制！+25%)';
+  if (mult < 1) return '(被克制，-25%)';
+  return '';
+}
+
+// ============================================================
+// 淘汰与胜利检查
+// ============================================================
+
+function checkAndNextTurn() {
+  // 检查淘汰
+  const newlyEliminated = [];
+  for (const facKey of ['fire','forest','wind','mountain']) {
+    if (!gameState.eliminated.includes(facKey) && isEliminated(facKey)) {
+      newlyEliminated.push(facKey);
+      gameState.eliminated.push(facKey);
+    }
+  }
+
+  for (const facKey of newlyEliminated) {
+    showMessage(`${FACTIONS[facKey].emoji}${FACTIONS[facKey].name}阵营全军覆没，已被淘汰！`);
+  }
+
+  // 检查胜利
+  const aliveFactions = ['fire','forest','wind','mountain'].filter(f => !isEliminated(f));
+  if (aliveFactions.length <= 1) {
+    if (aliveFactions.length === 1) {
+      showVictory(aliveFactions[0]);
+    }
+    return;
+  }
+
+  // 从行动顺序中移除已淘汰的
+  gameState.turnOrder = gameState.turnOrder.filter(f => !isEliminated(f));
+
+  nextTurn();
+}
+
+function nextTurn() {
+  // 推进到下一个存活阵营
+  gameState.turnIndex = (gameState.turnIndex + 1) % gameState.turnOrder.length;
+  advanceToAliveFaction();
+  updatePieceRender();
+  updateActionButtons();
+  updateUI();
+  const info = getCurrentFactionInfo();
+  showMessage(`${info} 的回合`);
+}
+
+function advanceToAliveFaction() {
+  // 确保当前回合指向存活阵营
+  let safety = 0;
+  while (safety < 10 && isEliminated(currentFaction())) {
+    gameState.turnIndex = (gameState.turnIndex + 1) % gameState.turnOrder.length;
+    safety++;
+  }
+  if (isEliminated(currentFaction())) {
+    // 所有人都淘汰了（不应该发生）
+    gameState.phase = 'victory';
+    return;
+  }
+  updateUI();
+}
+
+function getCurrentFactionInfo() {
+  const cf = currentFaction();
+  if (!cf) return '';
+  const fac = FACTIONS[cf];
+  return `${fac.emoji}${fac.name}（${fac.slogan}）`;
+}
+
+function updateUI() {
+  const cf = currentFaction();
+  if (!cf) {
+    dom.turnIndicator.innerHTML = '';
+    return;
+  }
+  const fac = FACTIONS[cf];
+  dom.turnIndicator.innerHTML =
+    `<span class="turn-emoji" style="color:${fac.color}">${fac.emoji}</span>
+     <span style="color:${fac.color}">${fac.name}的回合</span>`;
+  dom.turnIndicator.style.color = fac.color;
+  updateMountainDisplay();
+}
+
+function showVictory(factionKey) {
+  gameState.phase = 'victory';
+  const fac = FACTIONS[factionKey];
+  dom.victoryEmoji.textContent = fac.emoji;
+  dom.victoryMessage.textContent = `${fac.emoji}${fac.name}阵营获胜！`;
+  dom.victoryMessage.style.color = fac.color;
+  dom.victoryOverlay.style.display = 'flex';
+  updateUI();
+}
+
+// ============================================================
+// UI辅助
+// ============================================================
+
+function clearActionMode() {
+  gameState.actionMode = null;
+  gameState.validTargets = [];
+  gameState.firePieceId = null;
+  gameState._mountainMoves = null;
+  gameState._mountainAttacks = null;
+  clearHighlights();
+  clearArrows();
+  // 清除特效层
+  dom.effectsLayer.innerHTML = '';
+}
+
+function clearHighlights() {
+  for (const p of POINTS) {
+    const el = document.getElementById(`pt-${p.id}`);
+    if (el) {
+      el.classList.remove('valid-move', 'valid-attack', 'trap-target');
+    }
+  }
+}
+
+function highlightPoints(pointIds, className) {
+  for (const id of pointIds) {
+    const el = document.getElementById(`pt-${id}`);
+    if (el) el.classList.add(className);
+  }
+}
+
+function flashPoint(pointId, className) {
+  const pt = pointById[pointId];
+  if (!pt) return;
+  const { x, y } = pos(pt.col, pt.row);
+  const flash = document.createElement('div');
+  flash.style.cssText = `
+    position:absolute; z-index:12; pointer-events:none;
+    left:${x}px; top:${y}px;
+    width:${CELL*1.1}px; height:${CELL*1.1}px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+  `;
+  flash.className = className;
+  dom.effectsLayer.appendChild(flash);
+  setTimeout(() => flash.remove(), 550);
+}
+
+function clearAllDynamicElements() {
+  dom.pointsLayer.innerHTML = '';
+  dom.piecesLayer.innerHTML = '';
+  dom.trapsLayer.innerHTML = '';
+  dom.effectsLayer.innerHTML = '';
+  dom.arrowsLayer.innerHTML = '';
+  dom.actionBar.innerHTML = '';
+}
+
+function showMessage(msg) {
+  dom.messageArea.textContent = msg;
+}
+
+// ============================================================
+// 方向箭头（火技能）
+// ============================================================
+
+function renderArrows() {
+  dom.arrowsLayer.innerHTML = '';
+  if (gameState.actionMode !== 'fire_dir' || !gameState.firePieceId) return;
+
+  const piece = gameState.pieces.find(p => p.id === gameState.firePieceId);
+  if (!piece) return;
+
+  const pt = pointById[piece.position];
+  const { x, y } = pos(pt.col, pt.row);
+  const dist = 34;
+
+  for (const [dc, dr, label] of DIRECTIONS) {
+    const ax = x + dc * dist;
+    const ay = y + dr * dist;
+    const arrow = document.createElement('div');
+    arrow.className = 'dir-arrow';
+    arrow.style.cssText = `left:${ax}px;top:${ay}px;transform:translate(-50%,-50%);`;
+    arrow.textContent = label;
+    arrow.addEventListener('click', (e) => {
+      e.stopPropagation();
+      executeFireSkill(dc, dr);
+    });
+    dom.arrowsLayer.appendChild(arrow);
+  }
+}
+
+function clearArrows() {
+  dom.arrowsLayer.innerHTML = '';
+}
+
+// ============================================================
+// 棋盘点击背景（取消选择）
+// ============================================================
+
+domReady(() => {
+  document.getElementById('board-container').addEventListener('click', function(e) {
+    // 点击棋盘空白区域（非棋子非按钮）取消选择
+    if (e.target === this || e.target.classList.contains('board-point') && !getPieceAt(parseInt(e.target.dataset.point))) {
+      // 不自动取消，由具体逻辑处理
+    }
+  });
+});
+
+function domReady(fn) {
+  if (document.readyState !== 'loading') fn();
+  else document.addEventListener('DOMContentLoaded', fn);
+}
+
+// ============================================================
+// 启动
+// ============================================================
+
+domReady(() => {
+  initGame();
+});
+
+</script>
+</body>
+</html>
