@@ -169,8 +169,8 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
+  gap: 4px;
+  padding: 0;
 }
 
 /* ---------- 四方向信息条 ---------- */
@@ -236,6 +236,7 @@ body::before {
 #mid-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 
@@ -244,6 +245,7 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  margin: 0 auto;
 }
 
 /* ---------- 棋盘 ---------- */
@@ -263,18 +265,73 @@ body::before {
     inset 0 0 100px rgba(212,175,55,0.02);
 }
 
-/* 回合指示环 — 环绕棋盘的梯形边框 */
+/* 回合指示环 — 角饰 + 梯形 + 光扫 */
 #turn-indicator {
   position: absolute;
   top: -12px; left: -12px;
   width: calc(100% + 24px); height: calc(100% + 24px);
   pointer-events: none;
   z-index: -1;
-  border: 3px solid rgba(212,175,55,0.5);
-  border-radius: 6px;
   clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
   transition: clip-path 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 20px rgba(212,175,55,0.2), 0 0 50px rgba(212,175,55,0.08);
+}
+/* 内环 */
+#turn-indicator::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(212,175,55,0.45);
+  border-radius: 6px;
+  box-shadow:
+    0 0 16px rgba(212,175,55,0.15),
+    0 0 40px rgba(212,175,55,0.05),
+    inset 0 0 30px rgba(212,175,55,0.02);
+}
+/* 外环发光 */
+#turn-indicator::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(240,210,80,0.2);
+  border-radius: 8px;
+  animation: indicator-outer-pulse 2.5s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(212,175,55,0.08), 0 0 80px rgba(212,175,55,0.03);
+}
+@keyframes indicator-outer-pulse {
+  0%,100% { border-color: rgba(240,210,80,0.15); box-shadow: 0 0 20px rgba(212,175,55,0.05); }
+  50%     { border-color: rgba(240,210,80,0.35); box-shadow: 0 0 40px rgba(212,175,55,0.15), 0 0 90px rgba(212,175,55,0.05); }
+}
+
+/* 四角金饰 */
+.corner-ornament {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: 14px; height: 14px;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-deep));
+  box-shadow: 0 0 8px rgba(212,175,55,0.6), 0 0 20px rgba(212,175,55,0.2);
+  animation: corner-shimmer 2s ease-in-out infinite alternate;
+}
+.corner-ornament.top-left     { top: -7px; left: -7px; border-radius: 2px 0 0 0; }
+.corner-ornament.top-right    { top: -7px; right: -7px; border-radius: 0 2px 0 0; }
+.corner-ornament.bottom-left  { bottom: -7px; left: -7px; border-radius: 0 0 0 2px; }
+.corner-ornament.bottom-right { bottom: -7px; right: -7px; border-radius: 0 0 2px 0; }
+@keyframes corner-shimmer {
+  from { box-shadow: 0 0 6px rgba(212,175,55,0.5), 0 0 14px rgba(212,175,55,0.15); }
+  to   { box-shadow: 0 0 12px rgba(240,210,80,0.8), 0 0 28px rgba(212,175,55,0.35); }
+}
+
+/* 当前边光扫动画 */
+.edge-glow-sweep {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+  background: linear-gradient(90deg, transparent, rgba(240,210,80,0.3), transparent);
+  animation: sweep-light 2s ease-in-out infinite;
+}
+@keyframes sweep-light {
+  0%,100% { opacity: 0.2; }
+  50%     { opacity: 0.7; }
 }
 #board-container::before,
 #board-container::after {

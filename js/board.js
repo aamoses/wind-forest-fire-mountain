@@ -269,6 +269,48 @@ function updateTrapezoid() {
 
   el.style.transition = 'clip-path 0.55s cubic-bezier(0.4, 0, 0.2, 1)';
   el.style.clipPath = clips[cs];
+
+  // 活动边光扫
+  updateGlowSweep(cs);
+}
+
+let glowSweepEl = null;
+
+function updateGlowSweep(side) {
+  if (!glowSweepEl) {
+    glowSweepEl = document.createElement('div');
+    glowSweepEl.className = 'edge-glow-sweep';
+    if (dom.board) dom.board.appendChild(glowSweepEl);
+  }
+  if (!glowSweepEl || !dom.board) return;
+
+  const boardW = dom.board.offsetWidth;
+  const boardH = dom.board.offsetHeight;
+  const sweepW = 180;  // 光扫长度
+  const sweepH = 3;    // 光扫厚度
+
+  let top, left, width, height;
+  switch (side) {
+    case 'top':
+      left = (boardW - sweepW) / 2; top = -2; width = sweepW; height = sweepH;
+      break;
+    case 'bottom':
+      left = (boardW - sweepW) / 2; top = boardH - 1; width = sweepW; height = sweepH;
+      break;
+    case 'left':
+      left = -2; top = (boardH - sweepW) / 2; width = sweepH; height = sweepW;
+      break;
+    case 'right':
+      left = boardW - 1; top = (boardH - sweepW) / 2; width = sweepH; height = sweepW;
+      break;
+  }
+
+  glowSweepEl.style.cssText = `
+    left:${left}px; top:${top}px;
+    width:${width}px; height:${height}px;
+    ${(side==='left'||side==='right') ? 'background:linear-gradient(0deg, transparent, rgba(240,210,80,0.35), transparent);' : 'background:linear-gradient(90deg, transparent, rgba(240,210,80,0.35), transparent);'}
+    animation: sweep-light 1.8s ease-in-out infinite;
+  `;
 }
 
 function resetTrapezoid() {
