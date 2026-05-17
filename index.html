@@ -14,59 +14,64 @@
 <div id="entrance-overlay" class="hidden">
   <div class="entrance-title">风 林 火 山</div>
   <div class="entrance-arena">
-    <svg class="entrance-lines" viewBox="0 0 420 360">
-      <line x1="210" y1="38" x2="210" y2="168" />
-      <line x1="382" y1="180" x2="252" y2="180" />
-      <line x1="210" y1="322" x2="210" y2="192" />
-      <line x1="38" y1="180" x2="168" y2="180" />
+    <svg class="entrance-lines" viewBox="0 0 380 340">
+      <line x1="190" y1="30" x2="190" y2="155"/>
+      <line x1="350" y1="170" x2="225" y2="170"/>
+      <line x1="190" y1="310" x2="190" y2="185"/>
+      <line x1="30"  y1="170" x2="155" y2="170"/>
     </svg>
-    <div class="entrance-card top" id="ec-top"></div>
-    <div class="entrance-card right" id="ec-right"></div>
+    <div class="entrance-card top"    id="ec-top"></div>
+    <div class="entrance-card right"  id="ec-right"></div>
     <div class="entrance-card bottom" id="ec-bottom"></div>
-    <div class="entrance-card left" id="ec-left"></div>
-    <div class="entrance-vs">⚔  VS  ⚔</div>
+    <div class="entrance-card left"   id="ec-left"></div>
+    <div class="entrance-vs">⚔ VS ⚔</div>
   </div>
-  <button id="entrance-skip" onclick="skipEntrance()">跳过 ▸</button>
+  <button id="entrance-skip" onclick="skipEntrance()">跳过 ▶</button>
 </div>
 
 <!-- ========== 主菜单 ========== -->
 <div id="main-menu" class="screen active">
   <div class="menu-container">
-    <div class="menu-emblem">⚔</div>
+    <span class="menu-emblem">⚔</span>
     <h1 class="menu-title">风林火山</h1>
     <p class="menu-subtitle">四方乱斗</p>
     <div class="menu-divider"></div>
-    <p class="menu-hint">阵营随机分配 · 顺时针行动</p>
+    <p class="menu-hint">阵营随机分配 · 顺时针行动 · 移动后可继续攻击</p>
     <div class="menu-buttons">
       <button class="menu-btn" onclick="selectMode('single')">
         <span class="btn-icon">⚔</span>
-        <span class="btn-text">单人修习</span>
-        <span class="btn-desc">1人(下方) vs 3 AI</span>
+        <div>
+          <div class="btn-text">单人修习</div>
+          <div class="btn-desc">你（下方）vs 3个AI</div>
+        </div>
       </button>
       <button class="menu-btn" onclick="selectMode('dual')">
         <span class="btn-icon">🤝</span>
-        <span class="btn-text">双人组阵</span>
-        <span class="btn-desc">2人(下+右) vs 2 AI</span>
+        <div>
+          <div class="btn-text">双人组阵</div>
+          <div class="btn-desc">2人（下+右）vs 2个AI</div>
+        </div>
       </button>
       <button class="menu-btn" onclick="selectMode('quad')">
         <span class="btn-icon">👥</span>
-        <span class="btn-text">四方会战</span>
-        <span class="btn-desc">4人围坐 · 本地对战</span>
+        <div>
+          <div class="btn-text">四方会战</div>
+          <div class="btn-desc">4人围坐 · 本地对战</div>
+        </div>
       </button>
     </div>
 
-    <!-- 段位 & 排行榜（首页内联） -->
     <div id="home-leaderboard">
-      <h3>🏆 竞技战绩</h3>
+      <h3>🏆 战绩</h3>
       <div id="home-rank-badge">
         <span class="rank-icon" id="rank-icon">🥉</span>
         <span class="rank-name" id="rank-name">初入江湖</span>
       </div>
-      <div class="rank-progress"><div class="rank-progress-fill" id="rank-progress-fill" style="width:0%"></div></div>
+      <div class="rank-progress"><div class="rank-progress-fill" id="rank-progress-fill"></div></div>
       <div class="home-stats" id="home-stats">
-        <div>总场次 <span id="hs-total">0</span></div>
+        <div>场次 <span id="hs-total">0</span></div>
         <div>胜率 <span id="hs-winrate">-</span></div>
-        <div>最佳阵营 <span id="hs-best">-</span></div>
+        <div>最佳 <span id="hs-best">-</span></div>
       </div>
     </div>
   </div>
@@ -75,51 +80,49 @@
 <!-- ========== 战场界面 ========== -->
 <div id="game-screen" class="screen">
   <div id="app">
-    <!-- 上方信息栏（火视角） -->
+    <!-- 上方 -->
     <div class="edge-info edge-top" id="edge-top">
       <span class="edge-emoji"></span>
       <span class="edge-text"></span>
       <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-top"></div></div>
     </div>
 
-    <div id="mid-row">
-      <!-- 左方信息栏（林视角） -->
-      <div class="edge-info edge-left" id="edge-left">
-        <span class="edge-emoji"></span>
-        <span class="edge-text"></span>
-        <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-left"></div></div>
-      </div>
-
-      <!-- 棋盘 -->
-      <div id="board-wrapper">
-        <div id="board-container">
-          <div id="turn-indicator"></div>
-          <div class="corner-ornament top-left"></div>
-          <div class="corner-ornament top-right"></div>
-          <div class="corner-ornament bottom-left"></div>
-          <div class="corner-ornament bottom-right"></div>
-          <svg id="board-svg"></svg>
-          <div class="center-zone" id="center-zone"></div>
-          <div id="points-layer"></div>
-          <div id="pieces-layer"></div>
-          <div id="traps-layer"></div>
-          <div id="effects-layer"></div>
-          <div id="arrows-layer"></div>
-        </div>
-        <div id="message-area"></div>
-        <div id="mountain-counter" style="display:none;"></div>
-        <div id="action-bar"></div>
-      </div>
-
-      <!-- 右方信息栏（风视角） -->
-      <div class="edge-info edge-right" id="edge-right">
-        <span class="edge-emoji"></span>
-        <span class="edge-text"></span>
-        <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-right"></div></div>
-      </div>
+    <!-- 左方 -->
+    <div class="edge-info edge-left" id="edge-left">
+      <span class="edge-emoji"></span>
+      <span class="edge-text"></span>
+      <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-left"></div></div>
     </div>
 
-    <!-- 下方信息栏（山视角） -->
+    <!-- 棋盘 -->
+    <div id="board-wrapper">
+      <div id="board-container">
+        <div id="turn-indicator"></div>
+        <div class="corner-ornament top-left"></div>
+        <div class="corner-ornament top-right"></div>
+        <div class="corner-ornament bottom-left"></div>
+        <div class="corner-ornament bottom-right"></div>
+        <svg id="board-svg"></svg>
+        <div class="center-zone" id="center-zone"></div>
+        <div id="points-layer"></div>
+        <div id="pieces-layer"></div>
+        <div id="traps-layer"></div>
+        <div id="effects-layer"></div>
+        <div id="arrows-layer"></div>
+      </div>
+      <div id="message-area"></div>
+      <div id="mountain-counter" style="display:none;"></div>
+      <div id="action-bar"></div>
+    </div>
+
+    <!-- 右方 -->
+    <div class="edge-info edge-right" id="edge-right">
+      <span class="edge-emoji"></span>
+      <span class="edge-text"></span>
+      <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-right"></div></div>
+    </div>
+
+    <!-- 下方 -->
     <div class="edge-info edge-bottom" id="edge-bottom">
       <span class="edge-emoji"></span>
       <span class="edge-text"></span>
@@ -134,9 +137,10 @@
     <div class="overlay-icon">⚔️</div>
     <h2>行动顺序</h2>
     <div id="order-display"></div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
-      <span style="color:#ff6040;">●</span> 第1轮为布阵阶段，不可攻击
-    </div>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;letter-spacing:1px;">
+      前4回合为布阵阶段 · 不可攻击<br>
+      每回合可移动后继续攻击/使用技能
+    </p>
     <button class="gold-btn" onclick="startBattle()">开始对战</button>
   </div>
 </div>
@@ -150,9 +154,8 @@
   </div>
 </div>
 
-<!-- 排行榜弹窗 -->
 <div id="leaderboard-overlay" class="overlay" style="display:none">
-  <div class="overlay-content" style="max-width:420px;">
+  <div class="overlay-content" style="max-width:400px;">
     <h2>🏆 战绩记录</h2>
     <div id="leaderboard-list"></div>
     <button class="gold-btn" onclick="hideLeaderboard()" style="margin-top:12px;">关闭</button>

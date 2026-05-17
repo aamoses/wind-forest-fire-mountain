@@ -2,39 +2,32 @@
 // ============================================================
 
 const AI = {
-  delay: { min: 120, max: 350 }, // 思考延迟（ms）
+  delay: { min: 300, max: 700 },
 
-  // 入场：判断当前是否AI回合
   checkAndExecute() {
     const cf = currentFaction();
     if (!cf || gameState.phase !== 'playing') return;
     if (!gameState.aiFactions.includes(cf)) return;
 
     const delay = AI.delay.min + Math.random() * (AI.delay.max - AI.delay.min);
-    showMessage(`${FACTIONS[cf].name}思考中...`);
-
+    showMessage(`${FACTIONS[cf].emoji}${FACTIONS[cf].name} 思考中…`);
     setTimeout(() => {
-      if (gameState.phase !== 'playing') return;
-      if (currentFaction() !== cf) return;
+      if (gameState.phase !== 'playing' || currentFaction() !== cf) return;
       AI.executeTurn(cf);
     }, delay);
   },
 
-  // 执行AI回合
   executeTurn(faction) {
     const actions = AI.generateAllActions(faction);
     if (actions.length === 0) {
-      // 无可用操作，跳过回合
-      showMessage(`${FACTIONS[faction].name}无可用操作，跳过回合`);
+      showMessage(`${FACTIONS[faction].emoji}${FACTIONS[faction].name} 无可用行动，跳过`);
       nextTurn();
       return;
     }
-
     const best = AI.pickBest(actions, faction);
     AI.executeAction(best, faction);
   },
 
-  // 生成所有可用操作
   generateAllActions(faction) {
     const actions = [];
     const pieces = getAlivePieces(faction);
@@ -42,341 +35,360 @@ const AI = {
     const inDeploy = isDeployPhase();
 
     for (const piece of pieces) {
-      const pos = piece.position;
+      const p = piece.position;
+      const moves = getValidMoves(p);
 
-      // 移动操作（任何阶段均可）
-      const moves = getValidMoves(pos);
+      // 移动
       for (const m of moves) {
-        actions.push({ type: 'move', pieceId: piece.id, from: pos, to: m, score: 0 });
-      }
+        actions.push({ type:'move', pieceId:piece.id, from:p, to:m, score:0 });
 
-      // 布阵阶段：只能移动和布陷阱，不能攻击
-      if (inDeploy) {
-        if (faction === 'forest' && gameState.traps.length < 3) {
-          const occupied = new Set();
-          for (const p of gameState.pieces) { if (p.hp > 0) occupied.add(p.position); }
-          for (const t of gameState.traps) { occupied.add(t.position); }
-          const empty = POINTS.map(p => p.id).filter(id => !occupied.has(id));
-          const enemies = gameState.pieces.filter(p => p.faction !== 'forest' && p.hp > 0);
-          for (const eid of empty) {
-            let nearEnemy = 0;
-            for (const enemy of enemies) {
-              const dist = AI.pointDist(eid, enemy.position);
-              if (dist <= 2) nearEnemy++;
-            }
-            if (nearEnemy > 0) {
-              actions.push({ type: 'trap_place', pieceId: piece.id, pointId: eid, nearEnemy, score: 0 });
+        // 移动后攻击（AI也支持）
+        if (!inDeploy) {
+          const meleeAfterMove = getMeleeTargetsAt(m, faction);
+          for (const t of meleeAfterMove) {
+            const target = getPieceAt(t);
+            if (target) {
+              const dmg = calcDamage(faction, target.faction, 2);
+              actions.push({ type:'move_then_melee', pieceId:piece.id, from:p, moveTo:m, attackAt:t, targetPiece:target, damage:dmg, score:0 });
             }
           }
         }
-        continue; // 跳过所有攻击操作
       }
 
-      // 以下仅在非布阵阶段生成攻击操作
-      const meleeTargets = getMeleeTargets(pos);
+      if (inDeploy) {
+        if (faction === 'forest' && gameState.traps.length < 3) {
+          AI.addTrapPlaceActions(actions, piece);
+        }
+        continue;
+      }
+
+      // 近战（原地）
+      const meleeTargets = getMeleeTargets(p);
       for (const t of meleeTargets) {
         const target = getPieceAt(t);
         if (target) {
           const dmg = calcDamage(faction, target.faction, 2);
-          actions.push({ type: 'melee', pieceId: piece.id, from: pos, to: t, targetPiece: target, damage: dmg, score: 0 });
+          actions.push({ type:'melee', pieceId:piece.id, from:p, to:t, targetPiece:target, damage:dmg, score:0 });
         }
       }
 
-      // 阵营技能
+      // 技能
       if (faction === 'fire') {
         for (const [dc, dr] of DIRECTIONS) {
           const target = getFireTarget(piece.id, dc, dr);
-          if (target) {
+          if (target && target.piece.faction !== faction) {
             const dmg = calcDamage(faction, target.piece.faction, 2);
-            actions.push({ type: 'fire_skill', pieceId: piece.id, dcol: dc, drow: dr, target: target.pointId, targetPiece: target.piece, damage: dmg, score: 0 });
+            actions.push({ type:'fire_skill', pieceId:piece.id, dcol:dc, drow:dr, target:target.pointId, targetPiece:target.piece, damage:dmg, score:0 });
           }
         }
       } else if (faction === 'wind') {
-        const windTargets = getWindTargets(pos, piece.id);
+        const windTargets = getWindTargets(p, piece.id);
         if (windTargets.length > 0) {
-          let totalDmg = 0; let friendlyHits = 0;
+          let totalDmg = 0, friendlyHits = 0, enemyHits = 0;
           for (const t of windTargets) {
             totalDmg += calcDamage(faction, t.piece.faction, 2);
             if (t.piece.faction === faction) friendlyHits++;
+            else enemyHits++;
           }
-          actions.push({ type: 'wind_skill', pieceId: piece.id, targets: windTargets, totalDmg, friendlyHits, score: 0 });
+          if (enemyHits > friendlyHits) {
+            actions.push({ type:'wind_skill', pieceId:piece.id, totalDmg, friendlyHits, enemyHits, score:0 });
+          }
         }
       } else if (faction === 'forest') {
-        // 布陷阱：找最有价值的空位（上限3个）
-        if (gameState.traps.length >= 3) {
-          // 已达上限，跳过陷阱放置
-        } else {
-          const occupied = new Set();
-          for (const p of gameState.pieces) { if (p.hp > 0) occupied.add(p.position); }
-          for (const t of gameState.traps) { occupied.add(t.position); }
-          const empty = POINTS.map(p => p.id).filter(id => !occupied.has(id));
-
-          // 选靠近敌方路径的空位
-          const enemies = gameState.pieces.filter(p => p.faction !== 'forest' && p.hp > 0);
-          for (const eid of empty) {
-            let nearEnemy = 0;
-            for (const enemy of enemies) {
-              const dist = AI.pointDist(eid, enemy.position);
-              if (dist <= 2) nearEnemy++;
-            }
-            if (nearEnemy > 0) {
-              actions.push({ type: 'trap_place', pieceId: piece.id, pointId: eid, nearEnemy, score: 0 });
-            }
-          }
-        }
-
-        // 引爆：检查每个陷阱能炸到多少敌人
+        AI.addTrapPlaceActions(actions, piece);
+        // 引爆
         for (const trap of gameState.traps) {
-          const neighbors = ADJ[trap.position] || [];
-          const affected = [...neighbors, trap.position];
+          const affected = [trap.position, ...(ADJ[trap.position]||[])];
           let enemyHits = 0;
           for (const pid of affected) {
             const ep = getPieceAt(pid);
             if (ep && ep.faction !== 'forest') enemyHits++;
           }
           if (enemyHits > 0) {
-            actions.push({ type: 'trap_detonate', trapId: trap.id, enemyHits, score: 0 });
+            actions.push({ type:'trap_detonate', trapId:trap.id, enemyHits, score:0 });
           }
         }
       } else if (faction === 'mountain') {
-        // 山阵营：简单搜索移动+攻击路径
         actions.push(...AI.generateMountainActions(piece));
       }
     }
-
     return actions;
   },
 
-  // 山阵营专用动作生成
+  addTrapPlaceActions(actions, piece) {
+    if (gameState.traps.length >= 3) return;
+    const occupied = new Set([
+      ...gameState.pieces.filter(p => p.hp > 0).map(p => p.position),
+      ...gameState.traps.map(t => t.position),
+    ]);
+    const enemies = gameState.pieces.filter(p => p.faction !== 'forest' && p.hp > 0);
+    for (const pt of POINTS) {
+      if (occupied.has(pt.id)) continue;
+      let nearEnemy = 0;
+      for (const e of enemies) {
+        if (AI.pointDist(pt.id, e.position) <= 2) nearEnemy++;
+      }
+      if (nearEnemy > 0) {
+        actions.push({ type:'trap_place', pieceId:piece.id, pointId:pt.id, nearEnemy, score:0 });
+      }
+    }
+  },
+
   generateMountainActions(piece) {
     const actions = [];
-    const maxSteps = 4;
     const moves = getValidMoves(piece.position);
-    for (const m of moves) {
-      // 移动到m后，检查相邻可攻击目标
-      const neighbors = ADJ[m] || [];
-      for (const n of neighbors) {
-        const target = getPieceAt(n);
-        if (target && target.faction !== 'mountain') {
-          const remaining = maxSteps - 1;
-          const dmg = calcDamage('mountain', target.faction, remaining);
-          actions.push({ type: 'mountain_move_attack', pieceId: piece.id, moveTo: m, attackTarget: n, remaining, damage: dmg, score: 0 });
-        }
+
+    // 直接射击（不移动）
+    for (const nid of (ADJ[piece.position]||[])) {
+      const target = getPieceAt(nid);
+      if (target && target.faction !== 'mountain') {
+        const remaining = 4;
+        const dmg = calcDamage('mountain', target.faction, remaining);
+        actions.push({ type:'mountain_attack_only', pieceId:piece.id, attackTarget:nid, remaining, damage:dmg, score:0 });
       }
-      // 纯移动2-3步也考虑
-      const moves2 = getValidMoves(m);
-      for (const m2 of moves2) {
-        const neighbors2 = ADJ[m2] || [];
-        for (const n2 of neighbors2) {
-          const target2 = getPieceAt(n2);
-          if (target2 && target2.faction !== 'mountain') {
-            const remaining = maxSteps - 2;
-            const dmg = calcDamage('mountain', target2.faction, remaining);
-            actions.push({ type: 'mountain_move_attack', pieceId: piece.id, moveTo: m, moveTo2: m2, attackTarget: n2, remaining, damage: dmg, score: 0 });
-          }
+    }
+
+    // 移动后射击
+    for (const m of moves) {
+      for (const nid of (ADJ[m]||[])) {
+        const target = getPieceAt(nid);
+        if (target && target.faction !== 'mountain') {
+          const remaining = 3;
+          const dmg = calcDamage('mountain', target.faction, remaining);
+          actions.push({ type:'mountain_move_attack', pieceId:piece.id, moveTo:m, attackTarget:nid, remaining, damage:dmg, score:0 });
         }
       }
     }
     return actions;
   },
 
-  // 评分并选最优
   pickBest(actions, faction) {
-    for (const a of actions) {
-      a.score = AI.scoreAction(a, faction);
-    }
+    for (const a of actions) a.score = AI.scoreAction(a, faction);
     actions.sort((a, b) => b.score - a.score);
 
-    // 有一定随机性（70%选最优，30%在top3中随机）
-    if (actions.length > 1 && Math.random() < 0.3) {
-      const topN = Math.min(3, actions.length);
-      return actions[Math.floor(Math.random() * topN)];
+    // 80% 选最优，20% 在前3名中随机（保留一些不可预测性）
+    if (actions.length > 1 && Math.random() < 0.2) {
+      return actions[Math.floor(Math.random() * Math.min(3, actions.length))];
     }
     return actions[0];
   },
 
-  // 单项操作评分
   scoreAction(action, faction) {
-    let score = 5; // 基线
+    let score = 5;
 
     if (action.type === 'move') {
-      // 向中心靠近加分
       const pt = pointById[action.to];
-      const distToCenter = Math.abs(pt.col - 4) + Math.abs(pt.row - 3);
-      score += (6 - distToCenter) * 1.5;
-      // 向敌方领地靠近加分
+      const distCenter = Math.abs(pt.col - 4) + Math.abs(pt.row - 3);
+      score += (6 - distCenter) * 1.5;
       score += AI.zoneScore(action.to, faction) * 2;
+      // 移动后若能攻击，加额外分
+      const afterMelee = getMeleeTargetsAt(action.to, faction);
+      if (afterMelee.length > 0) score += afterMelee.length * 5;
+    } else if (action.type === 'move_then_melee') {
+      score += action.damage * 10;
+      if (action.targetPiece.hp <= action.damage) score += 35;
+      const mult = counterMultiplier(faction, action.targetPiece.faction);
+      if (mult > 1) score += 12;
+      if (mult < 1) score -= 8;
+      score += 8; // 移动后攻击额外奖励
     } else if (action.type === 'melee') {
+      score += action.damage * 10;
+      if (action.targetPiece.hp <= action.damage) score += 35;
+      const mult = counterMultiplier(faction, action.targetPiece.faction);
+      if (mult > 1) score += 12;
+      if (mult < 1) score -= 8;
+    } else if (action.type === 'fire_skill') {
       score += action.damage * 8;
-      // 消灭敌人额外加分
-      if (action.targetPiece && action.targetPiece.hp <= action.damage) {
-        score += 30;
-      }
-      // 克制加分
+      if (action.targetPiece.hp <= action.damage) score += 30;
       const mult = counterMultiplier(faction, action.targetPiece.faction);
       if (mult > 1) score += 10;
-      if (mult < 1) score -= 5;
-    } else if (action.type === 'fire_skill') {
-      score += action.damage * 7;
-      if (action.targetPiece && action.targetPiece.hp <= action.damage) score += 25;
-      const mult = counterMultiplier(faction, action.targetPiece.faction);
-      if (mult > 1) score += 8;
     } else if (action.type === 'wind_skill') {
-      score += action.totalDmg * 5;
-      score -= action.friendlyHits * 10;
-      if (action.targets.length >= 2) score += 8;
+      score += action.totalDmg * 6;
+      score -= action.friendlyHits * 14;
+      if (action.enemyHits >= 2) score += 10;
     } else if (action.type === 'trap_place') {
-      score += action.nearEnemy * 8;
+      score += action.nearEnemy * 9;
     } else if (action.type === 'trap_detonate') {
-      score += action.enemyHits * 12;
+      score += action.enemyHits * 14;
+    } else if (action.type === 'mountain_attack_only') {
+      score += action.damage * 10; // 全弹药射击
+      if (getPieceAt(action.attackTarget)?.hp <= action.damage) score += 35;
     } else if (action.type === 'mountain_move_attack') {
-      score += action.damage * 7;
-      if (action.remaining >= 3) score += 5;
-      const target = getPieceAt(action.attackTarget);
-      if (target && target.hp <= action.damage) score += 25;
+      score += action.damage * 8;
+      if (getPieceAt(action.attackTarget)?.hp <= action.damage) score += 28;
+      if (action.remaining >= 3) score += 6;
     }
 
     return score;
   },
 
-  // 执行选中的操作
   executeAction(action, faction) {
-    // 先选中棋子
     const piece = gameState.pieces.find(p => p.id === action.pieceId);
     if (!piece) { nextTurn(); return; }
 
+    const fName = `${FACTIONS[faction].emoji}${FACTIONS[faction].name}`;
+
     if (action.type === 'move') {
-      gameState.selectedPieceId = action.pieceId;
       schedulePieceAnimation(piece.id, action.from, action.to);
       piece.position = action.to;
       clearActionMode();
       gameState.selectedPieceId = null;
-      gameState.validTargets = [];
       updatePieceRender();
-      updateActionButtons();
-      showMessage(`${FACTIONS[faction].name}移动兵人`);
+      showMessage(`${fName} 移动`);
       nextTurn();
+
+    } else if (action.type === 'move_then_melee') {
+      // 先移动
+      schedulePieceAnimation(piece.id, action.from, action.moveTo);
+      piece.position = action.moveTo;
+      setTimeout(() => {
+        const target = getPieceAt(action.attackAt);
+        if (target) {
+          const dmg = calcDamage(faction, target.faction, 2);
+          const killed = target.hp <= dmg;
+          applyDamageToPiece(target, dmg);
+          if (killed) {
+            schedulePieceAnimation(piece.id, action.moveTo, action.attackAt);
+            piece.position = action.attackAt;
+          }
+          flashPoint(action.attackAt, 'flash-explosion');
+          const ci = getCounterInfo(faction, target.faction);
+          showMessage(`${fName} 移动后攻击${FACTIONS[target.faction].emoji}，伤害${dmg}${ci}`);
+        }
+        clearActionMode();
+        gameState.selectedPieceId = null;
+        updatePieceRender();
+        checkAndNextTurn();
+      }, 500);
+
     } else if (action.type === 'melee') {
       gameState.selectedPieceId = action.pieceId;
       const target = getPieceAt(action.to);
       if (target) {
         const dmg = calcDamage(faction, target.faction, 2);
-        const killed = (target.hp <= dmg);
+        const killed = target.hp <= dmg;
         applyDamageToPiece(target, dmg);
         if (killed) {
           schedulePieceAnimation(piece.id, action.from, action.to);
           piece.position = action.to;
         }
         flashPoint(action.to, 'flash-explosion');
+        const ci = getCounterInfo(faction, target.faction);
+        showMessage(`${fName} 近战${FACTIONS[target.faction].emoji}，伤害${dmg}${ci}`);
       }
       clearActionMode();
       gameState.selectedPieceId = null;
-      gameState.validTargets = [];
       updatePieceRender();
-      updateActionButtons();
-      showMessage(`${FACTIONS[faction].name}发动近战交火`);
       checkAndNextTurn();
+
     } else if (action.type === 'fire_skill') {
       gameState.firePieceId = action.pieceId;
       gameState.selectedPieceId = action.pieceId;
-      // 直接调用执行函数
-      const __firePieceId = gameState.firePieceId;
-      gameState.firePieceId = action.pieceId;
-      gameState.selectedPieceId = action.pieceId;
       executeFireSkillAI(action.dcol, action.drow, action.pieceId);
+
     } else if (action.type === 'wind_skill') {
       gameState.selectedPieceId = action.pieceId;
       executeWindSkill();
+
     } else if (action.type === 'trap_place') {
       gameState.selectedPieceId = action.pieceId;
       placeTrap(action.pointId);
+
     } else if (action.type === 'trap_detonate') {
       const trap = gameState.traps.find(t => t.id === action.trapId);
       if (trap) detonateTrap(trap);
       else nextTurn();
-    } else if (action.type === 'mountain_move_attack') {
+
+    } else if (action.type === 'mountain_attack_only') {
       gameState.mountainPieceId = action.pieceId;
       gameState.selectedPieceId = action.pieceId;
-      gameState.mountainRemaining = 6;
+      gameState.mountainRemaining = 4;
       gameState.actionMode = 'mountain';
-      // 简单执行：移动到目标位置，然后攻击
-      const mPiece = gameState.pieces.find(p => p.id === action.pieceId);
-      if (mPiece) {
-        const from1 = mPiece.position;
-        schedulePieceAnimation(mPiece.id, from1, action.moveTo);
-        mPiece.position = action.moveTo;
-        if (action.moveTo2) {
-          schedulePieceAnimation(mPiece.id, action.moveTo, action.moveTo2);
-          mPiece.position = action.moveTo2;
-        }
+      const target = getPieceAt(action.attackTarget);
+      if (target) {
+        const dmg = calcDamage('mountain', target.faction, 4);
+        applyDamageToPiece(target, dmg);
+        flashPoint(action.attackTarget, 'flash-mountain');
+        showMessage(`${fName} 全弹扫射！伤害${dmg}`);
       }
-      if (action.attackTarget) {
-        const target = getPieceAt(action.attackTarget);
-        if (target) {
-          const dmg = calcDamage('mountain', target.faction, action.remaining || 5);
-          applyDamageToPiece(target, dmg);
-          flashPoint(action.attackTarget, 'flash-mountain');
-        }
-      }
-      clearActionMode();
       gameState.selectedPieceId = null;
       gameState.mountainPieceId = null;
       gameState.mountainRemaining = 0;
+      clearActionMode();
       updatePieceRender();
-      updateActionButtons();
       updateMountainDisplay();
-      showMessage(`⛰️${FACTIONS[faction].name}发动山崩攻击`);
       checkAndNextTurn();
+
+    } else if (action.type === 'mountain_move_attack') {
+      gameState.mountainPieceId = action.pieceId;
+      gameState.selectedPieceId = action.pieceId;
+      gameState.mountainRemaining = 4;
+      gameState.actionMode = 'mountain';
+      const from = piece.position;
+      schedulePieceAnimation(piece.id, from, action.moveTo);
+      piece.position = action.moveTo;
+      setTimeout(() => {
+        const target = getPieceAt(action.attackTarget);
+        if (target) {
+          const dmg = calcDamage('mountain', target.faction, action.remaining);
+          applyDamageToPiece(target, dmg);
+          flashPoint(action.attackTarget, 'flash-mountain');
+          showMessage(`${fName} 冲锋射击！伤害${dmg}`);
+        }
+        gameState.selectedPieceId = null;
+        gameState.mountainPieceId = null;
+        gameState.mountainRemaining = 0;
+        clearActionMode();
+        updatePieceRender();
+        updateMountainDisplay();
+        checkAndNextTurn();
+      }, 500);
     }
   },
 
-  // 两点间的网格距离
   pointDist(aId, bId) {
-    const a = pointById[aId];
-    const b = pointById[bId];
+    const a = pointById[aId], b = pointById[bId];
     if (!a || !b) return 99;
     return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
   },
 
-  // zone评分：进入敌方领地加分
   zoneScore(pointId, faction) {
     const pt = pointById[pointId];
-    const factionZone = FACTIONS[faction].zone;
-    // 进入中心加分
     if (pt.zone === 'center') return 3;
-    // 进入敌方领地加更多分
-    const enemyZones = Object.values(FACTIONS)
-      .filter(f => f.key !== faction)
-      .map(f => f.zone);
+    const enemyZones = Object.values(FACTIONS).filter(f => f.key !== faction).map(f => f.zone);
     if (enemyZones.includes(pt.zone)) return 5;
-    // 自己领地不加分
-    if (pt.zone === factionZone) return -1;
+    if (pt.zone === FACTIONS[faction].zone) return -1;
     return 0;
   },
 };
 
-// 火技能AI版本（直接执行，不经过UI箭头流程）
+// 获取指定位置的近战目标（用于AI）
+function getMeleeTargetsAt(pointId, faction) {
+  return (ADJ[pointId] || []).filter(nid => {
+    const p = getPieceAt(nid);
+    return p && p.faction !== faction;
+  });
+}
+
+// 火技能AI版本
 function executeFireSkillAI(dcol, drow, pieceIdOverride) {
   const pieceId = pieceIdOverride || gameState.firePieceId;
   if (!pieceId) return;
-
   const piece = gameState.pieces.find(p => p.id === pieceId);
   if (!piece) return;
 
   const target = getFireTarget(pieceId, dcol, drow);
-
   if (target && target.piece.faction !== piece.faction) {
-    const damage = calcDamage(piece.faction, target.piece.faction, 2);
-    applyDamageToPiece(target.piece, damage);
+    const dmg = calcDamage(piece.faction, target.piece.faction, 2);
+    applyDamageToPiece(target.piece, dmg);
     drawFireLine(piece.position, target.pointId);
-    const counterInfo = getCounterInfo(piece.faction, target.piece.faction);
-    showMessage(`🎯精确狙击！对${FACTIONS[target.piece.faction].name}造成${damage}点伤害${counterInfo}`);
+    const ci = getCounterInfo(piece.faction, target.piece.faction);
+    showMessage(`${FACTIONS[piece.faction].emoji}AI狙击！伤害${dmg}${ci}`);
   }
 
   gameState.firePieceId = null;
   clearActionMode();
   gameState.selectedPieceId = null;
   updatePieceRender();
-  updateActionButtons();
   checkAndNextTurn();
 }

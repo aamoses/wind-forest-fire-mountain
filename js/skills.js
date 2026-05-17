@@ -1,54 +1,45 @@
 // 风林火山·四方乱斗 - 四阵营技能
 // ============================================================
 
-// 🔥火技能 - 火焰贯穿
-// ============================================================
-
+// 🔥 火 - 狙击（直线贯穿）
 function getFireTarget(pieceId, dcol, drow) {
   const piece = gameState.pieces.find(p => p.id === pieceId);
   if (!piece) return null;
-
   const pt = pointById[piece.position];
-  let col = pt.col + dcol;
-  let row = pt.row + drow;
-
+  let col = pt.col + dcol, row = pt.row + drow;
   while (true) {
     const targetPtId = pointMap[`${col},${row}`];
-    if (targetPtId === undefined) return null; // 飞出棋盘
+    if (targetPtId === undefined) return null;
     const targetPiece = getPieceAt(targetPtId);
-    if (targetPiece) {
-      return { pointId: targetPtId, piece: targetPiece };
-    }
-    col += dcol;
-    row += drow;
+    if (targetPiece) return { pointId: targetPtId, piece: targetPiece };
+    col += dcol; row += drow;
   }
 }
 
 function executeFireSkill(dcol, drow) {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage('布阵阶段不可使用技能'); return; }
   const pieceId = gameState.firePieceId;
   if (!pieceId) return;
-
   const piece = gameState.pieces.find(p => p.id === pieceId);
   if (!piece) return;
 
   const target = getFireTarget(pieceId, dcol, drow);
   const dirLabel = dcol===0 ? (drow===-1?'上':'下') : (dcol===-1?'左':'右');
-
   clearArrows();
 
   if (!target) {
-    showMessage(`🔥火焰向${dirLabel}方飞出棋盘，未命中任何棋子`);
+    showMessage(`🎯狙击向${dirLabel}方——弹尽无敌`);
   } else if (target.piece.faction === piece.faction) {
-    showMessage(`🎯狙击弹被己方${FACTIONS[target.piece.faction].name}阻挡，未造成伤害`);
+    showMessage(`🎯友军遮挡，狙击中止`);
   } else {
     const damage = calcDamage(piece.faction, target.piece.faction, 2);
     applyDamageToPiece(target.piece, damage);
     drawFireLine(piece.position, target.pointId);
-    const counterInfo = getCounterInfo(piece.faction, target.piece.faction);
-    showMessage(`🔥火焰贯穿${dirLabel}方！对${FACTIONS[target.piece.faction].name}造成${damage}点伤害${counterInfo}`);
+    const ci = getCounterInfo(piece.faction, target.piece.faction);
+    showMessage(`🎯狙击${dirLabel}方${FACTIONS[target.piece.faction].emoji}！伤害${damage}${ci}（剩余HP:${target.piece.hp}）`);
   }
 
+  gameState.turnActions.attacked = true;
   gameState.firePieceId = null;
   clearActionMode();
   gameState.selectedPieceId = null;
@@ -57,56 +48,43 @@ function executeFireSkill(dcol, drow) {
   checkAndNextTurn();
 }
 
-// 🌲林技能 - 布陷阱 / 引爆
-// ============================================================
-
+// 🌲 林 - 无人机（布置+引爆）
 function placeTrap(pointId) {
-  // 陷阱上限3个
-  if (gameState.traps.length >= 3) {
-    showMessage('🛸无人机已达上限（3架），请先召回');
-    return;
-  }
-  const trapId = gameState.traps.length > 0 ? Math.max(...gameState.traps.map(t=>t.id)) + 1 : 1;
+  if (gameState.traps.length >= 3) { showMessage('无人机已达上限（3架）'); return; }
+  const trapId = gameState.traps.length > 0 ? Math.max(...gameState.traps.map(t => t.id)) + 1 : 1;
   gameState.traps.push({ id: trapId, position: pointId });
-
   flashPoint(pointId, 'flash-wind');
-
   clearActionMode();
   gameState.selectedPieceId = null;
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
-  showMessage(`🛸无人机已部署在路口${pointId}`);
+  showMessage(`🛸无人机部署至路口${pointId}（${gameState.traps.length}/3）`);
   nextTurn();
 }
 
 function detonateTrap(trap) {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
-  // 引爆范围：陷阱所在点 + 横竖相邻点位（最多5格 = 1+4）
+  if (isDeployPhase()) { showMessage('布阵阶段不可引爆'); return; }
   const neighbors = ADJ[trap.position] || [];
   const affectedPoints = [trap.position, ...neighbors];
 
-  const affectedPieces = [];
+  const affected = [];
   for (const ptId of affectedPoints) {
     const piece = getPieceAt(ptId);
-    if (piece) affectedPieces.push(piece);
+    if (piece && piece.faction !== 'forest') affected.push(piece);
   }
-
-  for (const piece of affectedPieces) {
-    if (piece.faction === 'forest') continue;
+  for (const piece of affected) {
     const dmg = calcDamage('forest', piece.faction, 2);
     applyDamageToPiece(piece, dmg);
   }
-
-  for (const ptId of affectedPoints) {
-    flashPoint(ptId, 'flash-explosion');
-  }
-
+  for (const ptId of affectedPoints) flashPoint(ptId, 'flash-explosion');
   gameState.traps = gameState.traps.filter(t => t.id !== trap.id);
 
-  const hitCount = affectedPieces.filter(p => p.faction !== 'forest').length;
-  showMessage(`💥无人机打击！命中${hitCount}个目标，各造成2点伤害（无人机小队免疫）`);
-
+  gameState.turnActions.attacked = true;
+  const msg = affected.length > 0
+    ? `💥无人机引爆！命中${affected.length}个目标，各造成2伤害`
+    : '💥无人机引爆！范围内无敌人';
+  showMessage(msg);
   clearActionMode();
   gameState.selectedPieceId = null;
   gameState.validTargets = [];
@@ -115,28 +93,22 @@ function detonateTrap(trap) {
   checkAndNextTurn();
 }
 
-// 🌀风技能 - 风刃AOE（日字形波及所有单位含友军）
-// ============================================================
-
+// 💨 风 - 电磁辐射（日字AOE含友伤）
 function getWindTargets(pointId, excludePieceId) {
   const pt = pointById[pointId];
   const targets = [];
   for (const [dc, dr] of HORSE_OFFSETS) {
-    const col = pt.col + dc;
-    const row = pt.row + dr;
-    const targetPtId = pointMap[`${col},${row}`];
-    if (targetPtId !== undefined) {
-      const piece = getPieceAt(targetPtId);
-      if (piece && piece.id !== excludePieceId) {
-        targets.push({ pointId: targetPtId, piece: piece });
-      }
+    const tPtId = pointMap[`${pt.col + dc},${pt.row + dr}`];
+    if (tPtId !== undefined) {
+      const piece = getPieceAt(tPtId);
+      if (piece && piece.id !== excludePieceId) targets.push({ pointId: tPtId, piece });
     }
   }
   return targets;
 }
 
 function executeWindSkill() {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage('布阵阶段不可使用技能'); return; }
   const pieceId = gameState.selectedPieceId;
   if (!pieceId) return;
   const piece = gameState.pieces.find(p => p.id === pieceId);
@@ -144,24 +116,19 @@ function executeWindSkill() {
 
   const targets = getWindTargets(piece.position, pieceId);
   let hitCount = 0;
-  const hitPointIds = [];
-
   for (const target of targets) {
-    const damage = calcDamage(piece.faction, target.piece.faction, 2);
-    applyDamageToPiece(target.piece, damage);
+    const dmg = calcDamage(piece.faction, target.piece.faction, 2);
+    applyDamageToPiece(target.piece, dmg);
     hitCount++;
-    hitPointIds.push(target.pointId);
-  }
-
-  for (const ptId of hitPointIds) {
-    flashPoint(ptId, 'flash-wind');
+    flashPoint(target.pointId, 'flash-wind');
   }
 
   const selfHit = targets.filter(t => t.piece.faction === piece.faction).length;
-  let msg = `☢️电磁辐射释放！波及${hitCount}个目标，各造成2伤害`;
-  if (selfHit > 0) msg += `（含${selfHit}个友军误伤）`;
+  let msg = `⚡电磁辐射！波及${hitCount}目标，各造成2伤害`;
+  if (selfHit > 0) msg += `（含${selfHit}友军）`;
   showMessage(msg);
 
+  gameState.turnActions.attacked = true;
   clearActionMode();
   gameState.selectedPieceId = null;
   gameState.validTargets = [];
@@ -170,20 +137,17 @@ function executeWindSkill() {
   checkAndNextTurn();
 }
 
-// ⛰️山技能 - 走打一体
-// ============================================================
-
+// ⛰️ 山 - 走打一体
 function onMountainPieceClick(pieceId) {
   const piece = gameState.pieces.find(p => p.id === pieceId);
   if (!piece || piece.faction !== 'mountain') return;
 
   if (gameState.mountainPieceId === pieceId) {
-    showMessage(`🔫已选中此机枪手，剩余弹药：${gameState.mountainRemaining}`);
+    showMessage(`🔫已选中，剩余弹药：${gameState.mountainRemaining}`);
     return;
   }
-
-  if (gameState.mountainPieceId !== null && gameState.mountainRemaining < 6) {
-    showMessage('已开始行动，请先结束回合再换人');
+  if (gameState.mountainPieceId !== null && gameState.mountainRemaining < 4) {
+    showMessage('当前兵已行动，请先结束回合');
     return;
   }
 
@@ -195,123 +159,101 @@ function onMountainPieceClick(pieceId) {
   showMountainTargets();
   updatePieceRender();
   updateActionButtons();
-  showMessage('🔫跑打一体：点击绿点移动（消耗1弹药），点击红点射击（消耗全部剩余弹药）');
+  showMessage('🔫跑打一体：绿点=移动(耗1弹)，红点=射击(耗全部剩余弹药，越多越强)');
 }
 
 function showMountainTargets() {
   if (!gameState.mountainPieceId) return;
   const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
   if (!piece) return;
-
   clearHighlights();
 
-  const neighbors = ADJ[piece.position] || [];
-  const occupied = new Set();
-  for (const p of gameState.pieces) {
-    if (p.hp > 0) occupied.add(p.position);
-  }
+  const occupied = new Set(gameState.pieces.filter(p => p.hp > 0).map(p => p.position));
+  const moveTargets = [], attackTargets = [];
 
-  const moveTargets = [];
-  const attackTargets = [];
-
-  for (const nid of neighbors) {
+  for (const nid of (ADJ[piece.position] || [])) {
     if (occupied.has(nid)) {
-      const enemyPiece = getPieceAt(nid);
-      if (enemyPiece && enemyPiece.faction !== 'mountain') {
-        attackTargets.push(nid);
-      }
+      const enemy = getPieceAt(nid);
+      if (enemy && enemy.faction !== 'mountain') attackTargets.push(nid);
     } else {
       moveTargets.push(nid);
     }
   }
-
   highlightPoints(moveTargets, 'valid-move');
   highlightPoints(attackTargets, 'valid-attack');
-
   gameState._mountainMoves = moveTargets;
   gameState._mountainAttacks = attackTargets;
 }
 
 function handleMountainPointClick(pointId) {
-  if (gameState._mountainMoves && gameState._mountainMoves.includes(pointId)) {
+  if (gameState._mountainMoves?.includes(pointId)) {
     const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
     if (!piece) return;
-    const fromPointId = piece.position;
-    schedulePieceAnimation(piece.id, fromPointId, pointId);
+    const from = piece.position;
+    schedulePieceAnimation(piece.id, from, pointId);
     piece.position = pointId;
     gameState.mountainRemaining--;
 
     if (gameState.mountainRemaining <= 0) {
-      clearActionMode();
-      gameState.selectedPieceId = null;
-      gameState.mountainPieceId = null;
-      gameState.mountainRemaining = 0;
-      updatePieceRender();
-      updateActionButtons();
-      updateMountainDisplay();
-      showMessage('弹药已用完，回合结束');
-      nextTurn();
+      _endMountainTurn(false);
+      showMessage('弹药耗尽，回合结束');
     } else {
       updateMountainDisplay();
       showMountainTargets();
       updatePieceRender();
-      showMessage(`🔫移动1格，剩余弹药：${gameState.mountainRemaining}`);
+      showMessage(`🔫移动1格，剩余弹药：${gameState.mountainRemaining}（剩余越多伤害越高）`);
     }
-  } else if (gameState._mountainAttacks && gameState._mountainAttacks.includes(pointId)) {
+  } else if (gameState._mountainAttacks?.includes(pointId)) {
     executeMountainAttack(pointId);
   }
 }
 
 function executeMountainAttack(targetPointId) {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage('布阵阶段不可攻击'); return; }
   const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
   if (!piece) return;
-
   const targetPiece = getPieceAt(targetPointId);
   if (!targetPiece) return;
 
   const baseDamage = gameState.mountainRemaining;
-  const damage = calcDamage('mountain', targetPiece.faction, baseDamage);
-  applyDamageToPiece(targetPiece, damage);
-
+  const dmg = calcDamage('mountain', targetPiece.faction, baseDamage);
+  applyDamageToPiece(targetPiece, dmg);
   flashPoint(targetPointId, 'flash-mountain');
 
-  const counterInfo = getCounterInfo('mountain', targetPiece.faction);
-  showMessage(`🔫火力扫射！攻击力${baseDamage}，对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+  const ci = getCounterInfo('mountain', targetPiece.faction);
+  showMessage(`🔫扫射！蓄弹${baseDamage}→伤害${dmg}${ci}（${FACTIONS[targetPiece.faction].emoji}剩余HP:${targetPiece.hp}）`);
 
+  _endMountainTurn(true);
+  checkAndNextTurn();
+}
+
+function _endMountainTurn(didAttack) {
   clearActionMode();
   gameState.selectedPieceId = null;
   gameState.mountainPieceId = null;
   gameState.mountainRemaining = 0;
+  if (didAttack) gameState.turnActions.attacked = true;
   updatePieceRender();
   updateActionButtons();
   updateMountainDisplay();
-  checkAndNextTurn();
 }
 
 function endMountainTurn() {
   if (gameState.mountainRemaining === 4) {
     const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
     if (piece) {
-      const moves = getValidMoves(piece.position);
-      const neighbors = ADJ[piece.position] || [];
-      const hasAttack = neighbors.some(nid => {
+      const hasMove   = getValidMoves(piece.position).length > 0;
+      const hasAttack = (ADJ[piece.position] || []).some(nid => {
         const ep = getPieceAt(nid);
-        return ep && ep.faction !== 'mountain' && ep.hp > 0;
+        return ep && ep.faction !== 'mountain';
       });
-      if (moves.length > 0 || hasAttack) {
-        showMessage('请至少移动1格或射击1次');
+      if ((hasMove || hasAttack) && !isDeployPhase()) {
+        showMessage('请至少行动一次再结束回合');
         return;
       }
     }
   }
-  clearActionMode();
-  gameState.selectedPieceId = null;
-  gameState.mountainPieceId = null;
-  gameState.mountainRemaining = 0;
-  updatePieceRender();
-  updateActionButtons();
-  updateMountainDisplay();
+  _endMountainTurn(false);
   showMessage('🔫回合结束');
   nextTurn();
 }
@@ -324,7 +266,7 @@ function updateMountainDisplay() {
     for (let i = 0; i < 4; i++) {
       dots += `<span class="step-dot${i >= gameState.mountainRemaining ? ' used' : ''}"></span>`;
     }
-    dom.mountainCounter.innerHTML = `弹药: ${gameState.mountainRemaining}<span class="step-dots">${dots}</span>`;
+    dom.mountainCounter.innerHTML = `🔫 剩余弹药 ${gameState.mountainRemaining}<span class="step-dots">${dots}</span>（射击伤害=${gameState.mountainRemaining}）`;
   } else {
     dom.mountainCounter.style.display = 'none';
   }
