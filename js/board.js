@@ -45,16 +45,37 @@ function initParticles() {
   if (!particleCanvas) return;
   resizeParticleCanvas();
   particles = [];
-  const count = 60;
+  // 三层粒子：尘埃 + 火星 + 光斑
+  const count = 120;
   for (let i = 0; i < count; i++) {
+    const tier = Math.random();
+    let r, vx, vy, alpha;
+    if (tier < 0.6) {
+      // 微小尘埃
+      r = Math.random() * 1.2 + 0.2;
+      vx = (Math.random() - 0.5) * 0.2;
+      vy = (Math.random() - 0.5) * 0.2 - 0.12;
+      alpha = Math.random() * 0.25 + 0.05;
+    } else if (tier < 0.88) {
+      // 金色火星
+      r = Math.random() * 2 + 0.8;
+      vx = (Math.random() - 0.5) * 0.35;
+      vy = (Math.random() - 0.5) * 0.35 - 0.2;
+      alpha = Math.random() * 0.45 + 0.2;
+    } else {
+      // 大型光斑
+      r = Math.random() * 3.5 + 1.5;
+      vx = (Math.random() - 0.5) * 0.15;
+      vy = (Math.random() - 0.5) * 0.15 - 0.08;
+      alpha = Math.random() * 0.3 + 0.05;
+    }
     particles.push({
       x: Math.random() * particleCanvas.width,
       y: Math.random() * particleCanvas.height,
-      r: Math.random() * 1.8 + 0.4,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3 - 0.15,
-      alpha: Math.random() * 0.5 + 0.1,
+      r, vx, vy, alpha,
       pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: Math.random() * 0.03 + 0.01,
+      tier: tier < 0.6 ? 'dust' : (tier < 0.88 ? 'ember' : 'glow'),
     });
   }
   animateParticles();
@@ -73,27 +94,45 @@ function animateParticles() {
   for (const p of particles) {
     p.x += p.vx;
     p.y += p.vy;
-    p.pulse += 0.02;
+    p.pulse += p.pulseSpeed;
 
     // 边界循环
-    if (p.x < -10) p.x = particleCanvas.width + 10;
-    if (p.x > particleCanvas.width + 10) p.x = -10;
-    if (p.y < -10) p.y = particleCanvas.height + 10;
-    if (p.y > particleCanvas.height + 10) p.y = -10;
+    if (p.x < -20) p.x = particleCanvas.width + 20;
+    if (p.x > particleCanvas.width + 20) p.x = -20;
+    if (p.y < -20) p.y = particleCanvas.height + 20;
+    if (p.y > particleCanvas.height + 20) p.y = -20;
 
-    const flicker = p.alpha + Math.sin(p.pulse) * 0.15;
-    particleCtx.beginPath();
-    particleCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    particleCtx.fillStyle = `rgba(201,164,75,${Math.max(0.05, Math.min(0.7, flicker))})`;
-    particleCtx.fill();
+    const flicker = p.alpha + Math.sin(p.pulse) * (p.alpha * 0.6);
 
-    // 偶尔绘制光晕
-    if (Math.sin(p.pulse) > 0.7) {
+    if (p.tier === 'glow') {
+      // 大型光斑 — 内外两层
+      const grad = particleCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3);
+      grad.addColorStop(0, `rgba(240,210,96,${Math.min(0.25, flicker * 1.2)})`);
+      grad.addColorStop(0.3, `rgba(212,175,55,${Math.min(0.12, flicker * 0.6)})`);
+      grad.addColorStop(1, 'rgba(212,175,55,0)');
       particleCtx.beginPath();
-      particleCtx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
-      particleCtx.fillStyle = `rgba(255,200,100,${Math.min(0.15, flicker * 0.3)})`;
+      particleCtx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      particleCtx.fillStyle = grad;
       particleCtx.fill();
     }
+
+    if (p.tier === 'ember') {
+      // 火星 — 光晕+核心
+      const grad = particleCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
+      grad.addColorStop(0, `rgba(255,220,100,${Math.min(0.55, flicker)})`);
+      grad.addColorStop(0.5, `rgba(212,175,55,${Math.min(0.25, flicker * 0.5)})`);
+      grad.addColorStop(1, 'rgba(180,140,40,0)');
+      particleCtx.beginPath();
+      particleCtx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
+      particleCtx.fillStyle = grad;
+      particleCtx.fill();
+    }
+
+    // 核心点（所有粒子）
+    particleCtx.beginPath();
+    particleCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    particleCtx.fillStyle = `rgba(240,210,96,${Math.max(0.03, Math.min(0.6, flicker))})`;
+    particleCtx.fill();
   }
 
   particleAnimId = requestAnimationFrame(animateParticles);
@@ -186,6 +225,8 @@ function renderBoard() {
 function renderSVGLines() {
   const drawn = new Set();
   let lines = '';
+  // 发光层
+  let glowLines = '';
   for (const [aStr, neighbors] of Object.entries(ADJ)) {
     const a = parseInt(aStr);
     const pa = pointById[a];
@@ -196,11 +237,11 @@ function renderSVGLines() {
       drawn.add(key);
       const pb = pointById[b];
       const { x: x2, y: y2 } = pos(pb.col, pb.row);
-      // 金色棋盘线
-      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(201,164,75,0.4)" stroke-width="1.8" stroke-linecap="round"/>`;
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(212,175,55,0.12)" stroke-width="4" stroke-linecap="round"/>`;
+      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(212,175,55,0.35)" stroke-width="1.5" stroke-linecap="round"/>`;
     }
   }
-  dom.svg.innerHTML = lines;
+  dom.svg.innerHTML = glowLines + lines;
 }
 
 function renderCenterZone() {
