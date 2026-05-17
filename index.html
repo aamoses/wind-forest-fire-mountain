@@ -13,8 +13,19 @@
 <!-- ========== 入场动画 ========== -->
 <div id="entrance-overlay" class="hidden">
   <div class="entrance-title">风 林 火 山</div>
-  <div class="entrance-factions" id="entrance-factions"></div>
-  <div class="entrance-vs" id="entrance-vs" style="display:none;">⚔  VS  ⚔</div>
+  <div class="entrance-arena">
+    <svg class="entrance-lines" viewBox="0 0 420 360">
+      <line x1="210" y1="38" x2="210" y2="168" />
+      <line x1="382" y1="180" x2="252" y2="180" />
+      <line x1="210" y1="322" x2="210" y2="192" />
+      <line x1="38" y1="180" x2="168" y2="180" />
+    </svg>
+    <div class="entrance-card top" id="ec-top"></div>
+    <div class="entrance-card right" id="ec-right"></div>
+    <div class="entrance-card bottom" id="ec-bottom"></div>
+    <div class="entrance-card left" id="ec-left"></div>
+    <div class="entrance-vs">⚔  VS  ⚔</div>
+  </div>
   <button id="entrance-skip" onclick="skipEntrance()">跳过 ▸</button>
 </div>
 
@@ -124,7 +135,7 @@
     <h2>行动顺序</h2>
     <div id="order-display"></div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
-      <span style="color:#ff6040;">●</span> 前两轮为布阵阶段，不可攻击
+      <span style="color:#ff6040;">●</span> 第1轮为布阵阶段，不可攻击
     </div>
     <button class="gold-btn" onclick="startBattle()">开始对战</button>
   </div>

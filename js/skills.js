@@ -39,14 +39,14 @@ function executeFireSkill(dcol, drow) {
 
   if (!target) {
     showMessage(`🔥火焰向${dirLabel}方飞出棋盘，未命中任何棋子`);
+  } else if (target.piece.faction === piece.faction) {
+    showMessage(`🔥火焰被己方${FACTIONS[target.piece.faction].name}棋子挡住，未造成伤害`);
   } else {
     const damage = calcDamage(piece.faction, target.piece.faction, 2);
     applyDamageToPiece(target.piece, damage);
-
     drawFireLine(piece.position, target.pointId);
-
     const counterInfo = getCounterInfo(piece.faction, target.piece.faction);
-    showMessage(`🔥火焰贯穿${dirLabel}方！对${FACTIONS[target.piece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+    showMessage(`🔥火焰贯穿${dirLabel}方！对${FACTIONS[target.piece.faction].name}造成${damage}点伤害${counterInfo}`);
   }
 
   gameState.firePieceId = null;
@@ -61,6 +61,11 @@ function executeFireSkill(dcol, drow) {
 // ============================================================
 
 function placeTrap(pointId) {
+  // 陷阱上限3个
+  if (gameState.traps.length >= 3) {
+    showMessage('🌲陷阱已达上限（3个），请先引爆现有陷阱');
+    return;
+  }
   const trapId = gameState.traps.length > 0 ? Math.max(...gameState.traps.map(t=>t.id)) + 1 : 1;
   gameState.traps.push({ id: trapId, position: pointId });
 
@@ -77,6 +82,7 @@ function placeTrap(pointId) {
 
 function detonateTrap(trap) {
   if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
+  // 引爆范围：陷阱所在点 + 横竖相邻点位（最多5格 = 1+4）
   const neighbors = ADJ[trap.position] || [];
   const affectedPoints = [trap.position, ...neighbors];
 
@@ -112,7 +118,7 @@ function detonateTrap(trap) {
 // 🌀风技能 - 风刃AOE（日字形波及所有单位含友军）
 // ============================================================
 
-function getWindTargets(pointId) {
+function getWindTargets(pointId, excludePieceId) {
   const pt = pointById[pointId];
   const targets = [];
   for (const [dc, dr] of HORSE_OFFSETS) {
@@ -121,7 +127,7 @@ function getWindTargets(pointId) {
     const targetPtId = pointMap[`${col},${row}`];
     if (targetPtId !== undefined) {
       const piece = getPieceAt(targetPtId);
-      if (piece) {
+      if (piece && piece.id !== excludePieceId) {
         targets.push({ pointId: targetPtId, piece: piece });
       }
     }
@@ -136,7 +142,7 @@ function executeWindSkill() {
   const piece = gameState.pieces.find(p => p.id === pieceId);
   if (!piece) return;
 
-  const targets = getWindTargets(piece.position);
+  const targets = getWindTargets(piece.position, pieceId);
   let hitCount = 0;
   const hitPointIds = [];
 
@@ -183,7 +189,7 @@ function onMountainPieceClick(pieceId) {
 
   gameState.mountainPieceId = pieceId;
   gameState.selectedPieceId = pieceId;
-  gameState.mountainRemaining = 6;
+  gameState.mountainRemaining = 4;
   gameState.actionMode = 'mountain';
   updateMountainDisplay();
   showMountainTargets();
@@ -284,7 +290,7 @@ function executeMountainAttack(targetPointId) {
 }
 
 function endMountainTurn() {
-  if (gameState.mountainRemaining === 6) {
+  if (gameState.mountainRemaining === 4) {
     const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
     if (piece) {
       const moves = getValidMoves(piece.position);
@@ -315,7 +321,7 @@ function updateMountainDisplay() {
   if (cf === 'mountain' && gameState.mountainPieceId !== null && gameState.mountainRemaining > 0) {
     dom.mountainCounter.style.display = 'block';
     let dots = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       dots += `<span class="step-dot${i >= gameState.mountainRemaining ? ' used' : ''}"></span>`;
     }
     dom.mountainCounter.innerHTML = `剩余步数: ${gameState.mountainRemaining}<span class="step-dots">${dots}</span>`;

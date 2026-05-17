@@ -152,17 +152,21 @@ function executeMeleeAttack(targetPointId) {
   if (!targetPiece) return;
 
   const damage = calcDamage(piece.faction, targetPiece.faction, 2);
+  const killed = (targetPiece.hp <= damage);
   applyDamageToPiece(targetPiece, damage);
-
-  // 记录动画：攻击者移动到目标位置
-  const fromPointId = piece.position;
-  schedulePieceAnimation(piece.id, fromPointId, targetPointId);
-  piece.position = targetPointId;
 
   flashPoint(targetPointId, 'flash-explosion');
 
   const counterInfo = getCounterInfo(piece.faction, targetPiece.faction);
-  showMessage(`${FACTIONS[piece.faction].emoji}近战攻击！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}，已占据其位`);
+  if (killed) {
+    // 击杀：攻击者占据防御者位置
+    const fromPointId = piece.position;
+    schedulePieceAnimation(piece.id, fromPointId, targetPointId);
+    piece.position = targetPointId;
+    showMessage(`${FACTIONS[piece.faction].emoji}近战击杀！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}，已占据其位`);
+  } else {
+    showMessage(`${FACTIONS[piece.faction].emoji}近战攻击！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+  }
 
   clearActionMode();
   gameState.selectedPieceId = null;
@@ -298,7 +302,7 @@ function enterSkillMode() {
   } else if (cf === 'wind') {
     gameState.actionMode = 'attack_skill';
     const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
-    const targets = getWindTargets(piece.position);
+    const targets = getWindTargets(piece.position, piece.id);
     gameState.validTargets = targets.map(t => t.pointId);
     clearHighlights();
     highlightPoints(gameState.validTargets, 'valid-attack');

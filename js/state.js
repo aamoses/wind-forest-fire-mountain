@@ -69,9 +69,12 @@ function counterMultiplier(attackerFaction, defenderFaction) {
   return COUNTER[attackerFaction][defenderFaction] || 1.0;
 }
 
-// 计算实际伤害
+// 计算实际伤害（克制向上取整，被克向下取整）
 function calcDamage(attackerFaction, defenderFaction, baseDamage) {
-  return Math.floor(baseDamage * counterMultiplier(attackerFaction, defenderFaction));
+  const mult = counterMultiplier(attackerFaction, defenderFaction);
+  if (mult > 1) return Math.ceil(baseDamage * mult);
+  if (mult < 1) return Math.floor(baseDamage * mult);
+  return baseDamage;
 }
 
 // ============================================================
@@ -96,7 +99,7 @@ function initGame() {
     sideFaction: sideFaction,
     sideIndex: startIndex,
     totalTurns: 0,
-    deployTurns: 8,
+    deployTurns: 4,   // 布阵阶段：1轮完整循环（每人行动一次）
     pieces: [],
     traps: [],
     selectedPieceId: null,
@@ -156,7 +159,7 @@ function checkAndNextTurn() {
   }
 
   for (const facKey of newlyEliminated) {
-    showMessage(`${FACTIONS[facKey].emoji}${FACTIONS[facKey].name}阵营全军覆没，已被淘汰！`);
+    showMessage(`${FACTIONS[facKey].name}阵营全军覆没，已被淘汰！`);
   }
 
   const aliveFactions = ['fire','forest','wind','mountain'].filter(f => !isEliminated(f));
@@ -205,5 +208,5 @@ function getCurrentFactionInfo() {
   const fac = FACTIONS[cf];
   const side = currentSide();
   const sideNames = { top:'上方', right:'右方', bottom:'下方', left:'左方' };
-  return `${fac.emoji}${fac.name}（${sideNames[side]}·${fac.slogan}）`;
+  return `${fac.name}（${sideNames[side]}·${fac.slogan}）`;
 }

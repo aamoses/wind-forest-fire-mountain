@@ -53,37 +53,41 @@ function initParticles() {
   if (!particleCanvas) return;
   resizeParticleCanvas();
   particles = [];
-  // 三层粒子：尘埃 + 火星 + 光斑
-  const count = 120;
+  const count = 150;
   for (let i = 0; i < count; i++) {
     const tier = Math.random();
-    let r, vx, vy, alpha;
-    if (tier < 0.6) {
-      // 微小尘埃
-      r = Math.random() * 1.2 + 0.2;
-      vx = (Math.random() - 0.5) * 0.2;
-      vy = (Math.random() - 0.5) * 0.2 - 0.12;
-      alpha = Math.random() * 0.25 + 0.05;
-    } else if (tier < 0.88) {
-      // 金色火星
-      r = Math.random() * 2 + 0.8;
+    let r, vx, vy, alpha, color;
+    if (tier < 0.45) {
+      r = Math.random() * 1.4 + 0.3;
+      vx = (Math.random() - 0.5) * 0.25;
+      vy = (Math.random() - 0.5) * 0.25 - 0.15;
+      alpha = Math.random() * 0.3 + 0.06;
+      color = [240, 210, 96];
+    } else if (tier < 0.7) {
+      r = Math.random() * 2 + 0.6;
       vx = (Math.random() - 0.5) * 0.35;
-      vy = (Math.random() - 0.5) * 0.35 - 0.2;
-      alpha = Math.random() * 0.45 + 0.2;
+      vy = (Math.random() - 0.5) * 0.35 - 0.28;
+      alpha = Math.random() * 0.5 + 0.15;
+      color = [255, 100, 40];
+    } else if (tier < 0.88) {
+      r = Math.random() * 2.5 + 1;
+      vx = (Math.random() - 0.5) * 0.2;
+      vy = (Math.random() - 0.5) * 0.2 - 0.1;
+      alpha = Math.random() * 0.35 + 0.08;
+      color = [100, 180, 255];
     } else {
-      // 大型光斑
-      r = Math.random() * 3.5 + 1.5;
-      vx = (Math.random() - 0.5) * 0.15;
-      vy = (Math.random() - 0.5) * 0.15 - 0.08;
-      alpha = Math.random() * 0.3 + 0.05;
+      r = Math.random() * 4 + 2;
+      vx = (Math.random() - 0.5) * 0.12;
+      vy = (Math.random() - 0.5) * 0.12 - 0.06;
+      alpha = Math.random() * 0.25 + 0.04;
+      color = [240, 210, 80];
     }
     particles.push({
       x: Math.random() * particleCanvas.width,
       y: Math.random() * particleCanvas.height,
-      r, vx, vy, alpha,
+      r, vx, vy, alpha, color,
       pulse: Math.random() * Math.PI * 2,
-      pulseSpeed: Math.random() * 0.03 + 0.01,
-      tier: tier < 0.6 ? 'dust' : (tier < 0.88 ? 'ember' : 'glow'),
+      pulseSpeed: Math.random() * 0.04 + 0.01,
     });
   }
   animateParticles();
@@ -104,42 +108,29 @@ function animateParticles() {
     p.y += p.vy;
     p.pulse += p.pulseSpeed;
 
-    // 边界循环
-    if (p.x < -20) p.x = particleCanvas.width + 20;
-    if (p.x > particleCanvas.width + 20) p.x = -20;
-    if (p.y < -20) p.y = particleCanvas.height + 20;
-    if (p.y > particleCanvas.height + 20) p.y = -20;
+    if (p.x < -30) p.x = particleCanvas.width + 30;
+    if (p.x > particleCanvas.width + 30) p.x = -30;
+    if (p.y < -30) p.y = particleCanvas.height + 30;
+    if (p.y > particleCanvas.height + 30) p.y = -30;
 
-    const flicker = p.alpha + Math.sin(p.pulse) * (p.alpha * 0.6);
+    const flicker = p.alpha + Math.sin(p.pulse) * (p.alpha * 0.5);
+    const [cr, cg, cb] = p.color;
+    const glowR = p.r * (p.r > 2.5 ? 3 : 2);
 
-    if (p.tier === 'glow') {
-      // 大型光斑 — 内外两层
-      const grad = particleCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3);
-      grad.addColorStop(0, `rgba(240,210,96,${Math.min(0.25, flicker * 1.2)})`);
-      grad.addColorStop(0.3, `rgba(212,175,55,${Math.min(0.12, flicker * 0.6)})`);
-      grad.addColorStop(1, 'rgba(212,175,55,0)');
+    if (p.r > 1.5) {
+      const grad = particleCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+      grad.addColorStop(0, `rgba(${cr},${cg},${cb},${Math.min(0.3, flicker * 1.2)})`);
+      grad.addColorStop(0.4, `rgba(${cr},${cg},${cb},${Math.min(0.1, flicker * 0.4)})`);
+      grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
       particleCtx.beginPath();
-      particleCtx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      particleCtx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
       particleCtx.fillStyle = grad;
       particleCtx.fill();
     }
 
-    if (p.tier === 'ember') {
-      // 火星 — 光晕+核心
-      const grad = particleCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
-      grad.addColorStop(0, `rgba(255,220,100,${Math.min(0.55, flicker)})`);
-      grad.addColorStop(0.5, `rgba(212,175,55,${Math.min(0.25, flicker * 0.5)})`);
-      grad.addColorStop(1, 'rgba(180,140,40,0)');
-      particleCtx.beginPath();
-      particleCtx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
-      particleCtx.fillStyle = grad;
-      particleCtx.fill();
-    }
-
-    // 核心点（所有粒子）
     particleCtx.beginPath();
     particleCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    particleCtx.fillStyle = `rgba(240,210,96,${Math.max(0.03, Math.min(0.6, flicker))})`;
+    particleCtx.fillStyle = `rgba(${cr},${cg},${cb},${Math.max(0.03, Math.min(0.7, flicker))})`;
     particleCtx.fill();
   }
 
@@ -197,11 +188,11 @@ function updateEdgeInfo() {
     } else if (side === cs) {
       guideText = '点击棋子开始';
     } else {
-      guideText = isHuman ? '等待中...' : '🤖 AI思考中';
+      guideText = isHuman ? '👤 等待中...' : '🤖 AI思考中';
     }
 
-    const tag = isHuman ? '👤' : '🤖';
-    const text = `${tag}${fac.emoji}${fac.name} · ${guideText}${(side === cs && deployNote) ? deployNote : ''}`;
+    const deploySuffix = (side === cs && deployNote) ? deployNote : '';
+    const text = guideText + deploySuffix;
 
     el.style.color = fac.color;
     el.classList.toggle('active-faction', side === cs);
@@ -396,7 +387,7 @@ function renderAllPieces() {
       factionSide[f] = side;
     }
   }
-  const sideRotation = { top: 180, right: 0, bottom: 0, left: 0 };
+  const sideRotation = { top: 0, right: 270, bottom: 180, left: 90 };
 
   for (const piece of gameState.pieces) {
     if (piece.hp <= 0) continue;
@@ -414,7 +405,7 @@ function renderAllPieces() {
     html += `<div class="piece ${piece.faction}${selClass}${curClass}${atkClass}" id="piece-${piece.id}"
       style="left:${x}px;top:${y}px"
       data-piece="${piece.id}">
-      <div class="piece-figure" style="transform:rotate(${rot}deg);">${fac.emoji}</div>
+      <div class="piece-figure" style="transform:rotate(${rot}deg);">${SOLDIER_SVG[piece.faction]}</div>
       <div class="piece-hp">${hpDots}</div>
       <div class="piece-base"></div>
     </div>`;
@@ -653,7 +644,7 @@ function renderTurnOrder() {
     const f = gameState.sideFaction[side];
     const fac = FACTIONS[f];
     const isHuman = humanSides.includes(side);
-    html += `<span class="order-item">${sideNames[side]}·${fac.emoji}${fac.name} ${isHuman ? '👤' : '🤖'}</span>`;
+    html += `<span class="order-item">${sideNames[side]}·${fac.name} ${isHuman ? '👤' : '🤖'}</span>`;
   }
   dom.orderDisplay.innerHTML = html;
   dom.startOverlay.style.display = 'flex';
@@ -664,7 +655,7 @@ function showVictory(factionKey) {
   gameState.phase = 'victory';
   const fac = FACTIONS[factionKey];
   dom.victoryEmoji.textContent = fac.emoji;
-  dom.victoryMessage.textContent = `${fac.emoji}${fac.name}阵营获胜！`;
+  dom.victoryMessage.textContent = `${fac.name}阵营获胜！`;
   dom.victoryMessage.style.color = fac.color;
   dom.victoryOverlay.style.display = 'flex';
   clearEdgeInfo();

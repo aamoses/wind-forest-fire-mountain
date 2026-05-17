@@ -67,8 +67,9 @@ function startGameWithConfig() {
 
   // 播放入场动画
   playEntrance(() => {
+    dom.startOverlay.style.display = 'flex';
+    renderTurnOrder();
     updateUI();
-    showMessage('阵营已随机分配，点击"开始对战"');
   });
 }
 
@@ -105,8 +106,6 @@ nextTurn = function() {
 const originalCheckAndNextTurn = checkAndNextTurn;
 checkAndNextTurn = function() {
   originalCheckAndNextTurn();
-  if (gameState.simulating) return;
-  setTimeout(() => AI.checkAndExecute(), 200);
 };
 
 function restartGame() {
@@ -146,31 +145,28 @@ let entranceCallback = null;
 
 function playEntrance(onDone) {
   const overlay = document.getElementById('entrance-overlay');
-  const factionsEl = document.getElementById('entrance-factions');
-  const vsEl = document.getElementById('entrance-vs');
-  if (!overlay || !factionsEl) { onDone(); return; }
+  if (!overlay) { onDone(); return; }
 
   entranceCallback = onDone;
   overlay.classList.remove('hidden');
 
-  // 按四条边顺序展示阵营
+  // 按四条边填充对应角落卡片
   const sides = ['top', 'right', 'bottom', 'left'];
-  let html = '';
   for (const side of sides) {
     const f = gameState.sideFaction[side];
     const fac = FACTIONS[f];
     const isHuman = gameState.humanSides && gameState.humanSides.includes(side);
-    html += `<div class="entrance-faction" style="color:${fac.color}">
-      <span class="ef-icon">${fac.emoji}</span>
-      <span class="ef-name">${isHuman ? '👤 ' : '🤖 '}${fac.name}</span>
-    </div>`;
+    const card = document.getElementById('ec-' + side);
+    if (card) {
+      card.className = 'entrance-card ' + side + (isHuman ? ' player' : '');
+      card.innerHTML =
+        '<div class="ec-svg">' + SOLDIER_SVG[f] + '</div>' +
+        '<div class="ec-name" style="color:' + fac.color + '">' + fac.name + '</div>' +
+        '<div class="ec-badge ' + (isHuman ? 'human' : 'ai') + '">' + (isHuman ? '👤 玩家' : '🤖 AI') + '</div>';
+    }
   }
-  factionsEl.innerHTML = html;
 
-  vsEl.style.display = 'none';
-  setTimeout(() => { vsEl.style.display = 'block'; }, 2000);
-
-  entranceTimer = setTimeout(() => { finishEntrance(); }, 3800);
+  entranceTimer = setTimeout(function() { finishEntrance(); }, 3800);
 }
 
 function skipEntrance() {

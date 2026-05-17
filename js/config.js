@@ -45,10 +45,101 @@ const ADJ = {
 
 // 阵营定义
 const FACTIONS = {
-  fire:     { key:'fire',     name:'火', emoji:'⚔️', color:'#e74c3c', slogan:'侵掠如火', zone:'top' },
-  forest:   { key:'forest',   name:'林', emoji:'🏹', color:'#27ae60', slogan:'其徐如林', zone:'left' },
-  wind:     { key:'wind',     name:'风', emoji:'🐎', color:'#f1c40f', slogan:'其疾如风', zone:'right' },
-  mountain: { key:'mountain', name:'山', emoji:'🛡️', color:'#2980b9', slogan:'不动如山', zone:'bottom' },
+  fire:     { key:'fire',     name:'火', emoji:'火', color:'#e74c3c', slogan:'侵掠如火', zone:'top' },
+  forest:   { key:'forest',   name:'林', emoji:'林', color:'#27ae60', slogan:'其徐如林', zone:'left' },
+  wind:     { key:'wind',     name:'风', emoji:'风', color:'#f1c40f', slogan:'其疾如风', zone:'right' },
+  mountain: { key:'mountain', name:'山', emoji:'山', color:'#2980b9', slogan:'不动如山', zone:'bottom' },
+};
+
+// SVG兵人形象（更具体的战士造型 + 可见待机动画）
+const SOLDIER_SVG = {
+  fire: `<svg viewBox="0 0 48 56" width="48" height="56">
+    <defs>
+      <radialGradient id="fireGlow"><stop offset="0%" stop-color="#ff6622"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+    </defs>
+    <ellipse cx="24" cy="50" rx="18" ry="5" fill="rgba(0,0,0,0.5)"/>
+    <rect x="19" y="36" width="4" height="14" rx="1.5" fill="#2a1a10"/>
+    <rect x="25" y="36" width="4" height="14" rx="1.5" fill="#2a1a10"/>
+    <polygon points="24,14 15,38 33,38" fill="#c0392b"/>
+    <rect x="16" y="22" width="16" height="16" rx="3" fill="#a33025"/>
+    <path d="M18,26 L30,26 L28,34 L20,34 Z" fill="#8b2015"/>
+    <circle cx="24" cy="13" r="7" fill="#ffb899"/>
+    <polygon points="18,9 30,9 28,7 20,7" fill="#8b4513"/>
+    <line x1="24" y1="12" x2="24" y2="3" stroke="#c0392b" stroke-width="2"/>
+    <line x1="24" y1="14" x2="16" y2="44" stroke="#8b6914" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="14,42 18,46 16,48 12,44" fill="#f5c542"/>
+    <circle cx="24" cy="28" r="5" fill="url(#fireGlow)" opacity="0.6">
+      <animate attributeName="r" values="4;6;4" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.9;0.6" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="15" cy="43" r="3" fill="#ff4422" opacity="0.8">
+      <animate attributeName="r" values="2;4;2" dur="0.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="0.8s" repeatCount="indefinite"/>
+    </circle>
+  </svg>`,
+  forest: `<svg viewBox="0 0 48 56" width="48" height="56">
+    <defs>
+      <radialGradient id="forestGlow"><stop offset="0%" stop-color="#44ee66"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+    </defs>
+    <ellipse cx="24" cy="50" rx="18" ry="5" fill="rgba(0,0,0,0.5)"/>
+    <rect x="19" y="38" width="4" height="12" rx="1.5" fill="#1a2a10"/>
+    <rect x="25" y="38" width="4" height="12" rx="1.5" fill="#1a2a10"/>
+    <polygon points="24,16 14,38 34,38" fill="#1e6b3b"/>
+    <rect x="15" y="22" width="18" height="16" rx="4" fill="#27ae60"/>
+    <path d="M16,22 L32,22 L36,14 L12,14 Z" fill="#1a7a3f"/>
+    <circle cx="24" cy="13" r="6" fill="#d4c5a0"/>
+    <path d="M16,8 Q24,2 32,8" fill="#1e6b3b" stroke="#27ae60" stroke-width="1.5"/>
+    <line x1="12" y1="28" x2="36" y2="18" stroke="#6b4e14" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M12,28 Q18,30 24,28 Q30,26 36,18" fill="none" stroke="#8b6914" stroke-width="1.2"/>
+    <line x1="34" y1="16" x2="40" y2="12" stroke="#f5c542" stroke-width="1.8" stroke-linecap="round"/>
+    <polygon points="38,10 42,12 40,14 36,12" fill="#f5c542"/>
+    <circle cx="24" cy="32" r="4" fill="url(#forestGlow)" opacity="0.5">
+      <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.7;0.4" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </svg>`,
+  wind: `<svg viewBox="0 0 48 56" width="48" height="56">
+    <defs>
+      <radialGradient id="windGlow"><stop offset="0%" stop-color="#ffe866"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+    </defs>
+    <ellipse cx="24" cy="50" rx="18" ry="5" fill="rgba(0,0,0,0.5)"/>
+    <rect x="18" y="36" width="4" height="14" rx="1.5" fill="#1a1808"/>
+    <rect x="26" y="36" width="4" height="14" rx="1.5" fill="#1a1808"/>
+    <polygon points="24,16 13,40 35,40" fill="#b8860b"/>
+    <rect x="15" y="22" width="18" height="18" rx="3" fill="#d4a010"/>
+    <path d="M17,24 L31,24 L29,34 L19,34 Z" fill="#a07810"/>
+    <circle cx="24" cy="13" r="6" fill="#e8d5a0"/>
+    <path d="M28,10 L22,8 L24,4 Z" fill="#c0a040"/>
+    <path d="M10,30 Q6,20 16,24 Q26,28 36,22" fill="none" stroke="#f5d860" stroke-width="3" opacity="0.7">
+      <animate attributeName="d" values="M10,30 Q6,20 16,24 Q26,28 36,22;M10,32 Q6,22 16,26 Q26,30 36,24;M10,30 Q6,20 16,24 Q26,28 36,22" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <line x1="24" y1="20" x2="36" y2="10" stroke="#f5c542" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="34,8 38,10 36,14 32,10" fill="#f5c542"/>
+    <circle cx="24" cy="30" r="4" fill="url(#windGlow)" opacity="0.5">
+      <animate attributeName="r" values="3;5;3" dur="1.3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.3s" repeatCount="indefinite"/>
+    </circle>
+  </svg>`,
+  mountain: `<svg viewBox="0 0 48 56" width="48" height="56">
+    <defs>
+      <radialGradient id="mountainGlow"><stop offset="0%" stop-color="#55b8ff"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+    </defs>
+    <ellipse cx="24" cy="50" rx="18" ry="5" fill="rgba(0,0,0,0.5)"/>
+    <rect x="18" y="36" width="5" height="14" rx="2" fill="#081a28"/>
+    <rect x="25" y="36" width="5" height="14" rx="2" fill="#081a28"/>
+    <rect x="12" y="18" width="24" height="20" rx="4" fill="#1e4d8c"/>
+    <rect x="14" y="20" width="20" height="16" rx="3" fill="#2a6ab8"/>
+    <circle cx="24" cy="16" r="9" fill="#3a7acc" stroke="#55b8ff" stroke-width="1.5"/>
+    <path d="M16,20 L32,20 L28,34 L20,34 Z" fill="#1e5daa"/>
+    <circle cx="24" cy="14" r="7" fill="#c0b8a8"/>
+    <rect x="18" y="12" width="12" height="4" rx="2" fill="#8a8a80"/>
+    <circle cx="24" cy="14" r="8" fill="none" stroke="#55b8ff" stroke-width="1.5" opacity="0.5">
+      <animate attributeName="r" values="8;12;8" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="24" y1="22" x2="24" y2="36" stroke="#55b8ff" stroke-width="1" opacity="0.4"/>
+    <line x1="18" y1="26" x2="30" y2="26" stroke="#55b8ff" stroke-width="1" opacity="0.3"/>
+  </svg>`,
 };
 
 // 克制关系: attacker -> { defender: multiplier }

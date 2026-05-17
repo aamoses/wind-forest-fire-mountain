@@ -11,7 +11,7 @@ const AI = {
     if (!gameState.aiFactions.includes(cf)) return;
 
     const delay = AI.delay.min + Math.random() * (AI.delay.max - AI.delay.min);
-    showMessage(`${FACTIONS[cf].emoji}${FACTIONS[cf].name}思考中...`);
+    showMessage(`${FACTIONS[cf].name}思考中...`);
 
     setTimeout(() => {
       if (gameState.phase !== 'playing') return;
@@ -25,7 +25,7 @@ const AI = {
     const actions = AI.generateAllActions(faction);
     if (actions.length === 0) {
       // 无可用操作，跳过回合
-      showMessage(`${FACTIONS[faction].emoji}${FACTIONS[faction].name}无可用操作，跳过回合`);
+      showMessage(`${FACTIONS[faction].name}无可用操作，跳过回合`);
       nextTurn();
       return;
     }
@@ -39,17 +39,40 @@ const AI = {
     const actions = [];
     const pieces = getAlivePieces(faction);
     if (pieces.length === 0) return actions;
+    const inDeploy = isDeployPhase();
 
     for (const piece of pieces) {
       const pos = piece.position;
 
-      // 移动操作
+      // 移动操作（任何阶段均可）
       const moves = getValidMoves(pos);
       for (const m of moves) {
         actions.push({ type: 'move', pieceId: piece.id, from: pos, to: m, score: 0 });
       }
 
-      // 近战攻击
+      // 布阵阶段：只能移动和布陷阱，不能攻击
+      if (inDeploy) {
+        if (faction === 'forest' && gameState.traps.length < 3) {
+          const occupied = new Set();
+          for (const p of gameState.pieces) { if (p.hp > 0) occupied.add(p.position); }
+          for (const t of gameState.traps) { occupied.add(t.position); }
+          const empty = POINTS.map(p => p.id).filter(id => !occupied.has(id));
+          const enemies = gameState.pieces.filter(p => p.faction !== 'forest' && p.hp > 0);
+          for (const eid of empty) {
+            let nearEnemy = 0;
+            for (const enemy of enemies) {
+              const dist = AI.pointDist(eid, enemy.position);
+              if (dist <= 2) nearEnemy++;
+            }
+            if (nearEnemy > 0) {
+              actions.push({ type: 'trap_place', pieceId: piece.id, pointId: eid, nearEnemy, score: 0 });
+            }
+          }
+        }
+        continue; // 跳过所有攻击操作
+      }
+
+      // 以下仅在非布阵阶段生成攻击操作
       const meleeTargets = getMeleeTargets(pos);
       for (const t of meleeTargets) {
         const target = getPieceAt(t);
@@ -69,7 +92,7 @@ const AI = {
           }
         }
       } else if (faction === 'wind') {
-        const windTargets = getWindTargets(pos);
+        const windTargets = getWindTargets(pos, piece.id);
         if (windTargets.length > 0) {
           let totalDmg = 0; let friendlyHits = 0;
           for (const t of windTargets) {
@@ -79,22 +102,26 @@ const AI = {
           actions.push({ type: 'wind_skill', pieceId: piece.id, targets: windTargets, totalDmg, friendlyHits, score: 0 });
         }
       } else if (faction === 'forest') {
-        // 布陷阱：找最有价值的空位
-        const occupied = new Set();
-        for (const p of gameState.pieces) { if (p.hp > 0) occupied.add(p.position); }
-        for (const t of gameState.traps) { occupied.add(t.position); }
-        const empty = POINTS.map(p => p.id).filter(id => !occupied.has(id));
+        // 布陷阱：找最有价值的空位（上限3个）
+        if (gameState.traps.length >= 3) {
+          // 已达上限，跳过陷阱放置
+        } else {
+          const occupied = new Set();
+          for (const p of gameState.pieces) { if (p.hp > 0) occupied.add(p.position); }
+          for (const t of gameState.traps) { occupied.add(t.position); }
+          const empty = POINTS.map(p => p.id).filter(id => !occupied.has(id));
 
-        // 选靠近敌方路径的空位
-        const enemies = gameState.pieces.filter(p => p.faction !== 'forest' && p.hp > 0);
-        for (const eid of empty) {
-          let nearEnemy = 0;
-          for (const enemy of enemies) {
-            const dist = AI.pointDist(eid, enemy.position);
-            if (dist <= 2) nearEnemy++;
-          }
-          if (nearEnemy > 0) {
-            actions.push({ type: 'trap_place', pieceId: piece.id, pointId: eid, nearEnemy, score: 0 });
+          // 选靠近敌方路径的空位
+          const enemies = gameState.pieces.filter(p => p.faction !== 'forest' && p.hp > 0);
+          for (const eid of empty) {
+            let nearEnemy = 0;
+            for (const enemy of enemies) {
+              const dist = AI.pointDist(eid, enemy.position);
+              if (dist <= 2) nearEnemy++;
+            }
+            if (nearEnemy > 0) {
+              actions.push({ type: 'trap_place', pieceId: piece.id, pointId: eid, nearEnemy, score: 0 });
+            }
           }
         }
 
@@ -123,8 +150,7 @@ const AI = {
   // 山阵营专用动作生成
   generateMountainActions(piece) {
     const actions = [];
-    const maxSteps = 6;
-    // 搜索1步移动 + 攻击
+    const maxSteps = 4;
     const moves = getValidMoves(piece.position);
     for (const m of moves) {
       // 移动到m后，检查相邻可攻击目标
@@ -228,16 +254,19 @@ const AI = {
       gameState.validTargets = [];
       updatePieceRender();
       updateActionButtons();
-      showMessage(`${FACTIONS[faction].emoji}${FACTIONS[faction].name}移动棋子`);
+      showMessage(`${FACTIONS[faction].name}移动棋子`);
       nextTurn();
     } else if (action.type === 'melee') {
       gameState.selectedPieceId = action.pieceId;
       const target = getPieceAt(action.to);
       if (target) {
         const dmg = calcDamage(faction, target.faction, 2);
+        const killed = (target.hp <= dmg);
         applyDamageToPiece(target, dmg);
-        schedulePieceAnimation(piece.id, action.from, action.to);
-        piece.position = action.to;
+        if (killed) {
+          schedulePieceAnimation(piece.id, action.from, action.to);
+          piece.position = action.to;
+        }
         flashPoint(action.to, 'flash-explosion');
       }
       clearActionMode();
@@ -245,7 +274,7 @@ const AI = {
       gameState.validTargets = [];
       updatePieceRender();
       updateActionButtons();
-      showMessage(`${FACTIONS[faction].emoji}${FACTIONS[faction].name}发动近战攻击`);
+      showMessage(`${FACTIONS[faction].name}发动近战攻击`);
       checkAndNextTurn();
     } else if (action.type === 'fire_skill') {
       gameState.firePieceId = action.pieceId;
@@ -336,12 +365,12 @@ function executeFireSkillAI(dcol, drow, pieceIdOverride) {
 
   const target = getFireTarget(pieceId, dcol, drow);
 
-  if (target) {
+  if (target && target.piece.faction !== piece.faction) {
     const damage = calcDamage(piece.faction, target.piece.faction, 2);
     applyDamageToPiece(target.piece, damage);
     drawFireLine(piece.position, target.pointId);
     const counterInfo = getCounterInfo(piece.faction, target.piece.faction);
-    showMessage(`🔥火焰贯穿！对${FACTIONS[target.piece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+    showMessage(`🔥火焰贯穿！对${FACTIONS[target.piece.faction].name}造成${damage}点伤害${counterInfo}`);
   }
 
   gameState.firePieceId = null;
