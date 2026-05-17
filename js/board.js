@@ -155,77 +155,125 @@ function stopParticles() {
 window.addEventListener('resize', resizeParticleCanvas);
 
 // ============================================================
-// 四方向信息更新
+// 四方向信息更新（按边位置而非阵营）
 // ============================================================
 
+// 边到DOM元素的映射
+const SIDE_EDGES = {
+  top:    { edge: 'edgeTop',  hp: 'edgeHpTop' },
+  bottom: { edge: 'edgeBottom', hp: 'edgeHpBottom' },
+  left:   { edge: 'edgeLeft',  hp: 'edgeHpLeft' },
+  right:  { edge: 'edgeRight', hp: 'edgeHpRight' },
+};
+
 function updateEdgeInfo() {
+  const cs = currentSide();
+  if (!cs) { clearEdgeInfo(); return; }
   const cf = currentFaction();
-  if (!cf) { clearEdgeInfo(); return; }
-  const fac = FACTIONS[cf];
+
   const selPiece = gameState.selectedPieceId !== null
     ? gameState.pieces.find(p => p.id === gameState.selectedPieceId) : null;
 
-  // 构建操作指引
-  let guideText = '';
-  if (selPiece && gameState.phase === 'playing') {
-    if (cf === 'mountain')      guideText = '走打一体 | 绿:移动 | 红:攻击';
-    else if (cf === 'forest')   guideText = '移动 | 近战2 | 布陷阱 | 引爆';
-    else if (cf === 'fire')     guideText = '移动 | 近战2 | 火焰贯穿2(直线)';
-    else if (cf === 'wind')     guideText = '移动 | 近战2 | 风刃2(日字AOE)';
-  } else {
-    guideText = '点击棋子开始';
-  }
-
   const deployNote = isDeployPhase() ? ' [布阵期·禁攻]' : '';
-  const emoji = fac.emoji;
-  const text = `轮到:${fac.name} · ${guideText}${deployNote}`;
 
-  // 四个方向文字
-  for (const edge of [dom.edgeTop, dom.edgeBottom, dom.edgeLeft, dom.edgeRight]) {
-    if (!edge) continue;
-    edge.style.color = fac.color;
-    if (cf) edge.classList.add('active-faction');
-    else edge.classList.remove('active-faction');
-    const eEmoji = edge.querySelector('.edge-emoji');
-    const eText = edge.querySelector('.edge-text');
-    if (eEmoji) eEmoji.textContent = emoji;
+  // 更新每条边
+  for (const side of SIDES) {
+    const entry = SIDE_EDGES[side];
+    const el = dom[entry.edge];
+    if (!el) continue;
+
+    const factionOnSide = gameState.sideFaction[side];
+    const fac = FACTIONS[factionOnSide];
+    const isHuman = gameState.humanSides && gameState.humanSides.includes(side);
+
+    // 构建该边的指引文本
+    let guideText = '';
+    if (side === cs && selPiece && gameState.phase === 'playing') {
+      if (cf === 'mountain')     guideText = '走打一体 | 绿:移动 | 红:攻击';
+      else if (cf === 'forest')  guideText = '移动 | 近战2 | 布陷阱 | 引爆';
+      else if (cf === 'fire')    guideText = '移动 | 近战2 | 火焰贯穿2(直线)';
+      else if (cf === 'wind')    guideText = '移动 | 近战2 | 风刃2(日字AOE)';
+    } else if (side === cs) {
+      guideText = '点击棋子开始';
+    } else {
+      guideText = isHuman ? '等待中...' : '🤖 AI思考中';
+    }
+
+    const tag = isHuman ? '👤' : '🤖';
+    const text = `${tag}${fac.emoji}${fac.name} · ${guideText}${(side === cs && deployNote) ? deployNote : ''}`;
+
+    el.style.color = fac.color;
+    el.classList.toggle('active-faction', side === cs);
+    const eEmoji = el.querySelector('.edge-emoji');
+    const eText = el.querySelector('.edge-text');
+    if (eEmoji) eEmoji.textContent = fac.emoji;
     if (eText) eText.textContent = text;
   }
 
-  // 更新四个阵营的HP血条
   updateEdgeHPBars();
+  updateTrapezoid();
 }
 
 function updateEdgeHPBars() {
-  const mapping = {
-    fire: dom.edgeHpTop, forest: dom.edgeHpLeft,
-    wind: dom.edgeHpRight, mountain: dom.edgeHpBottom,
-  };
-  const colors = {
+  const colorMap = {
     fire: '#ff5530', forest: '#45f075',
     wind: '#f5d860', mountain: '#55b8ff',
   };
-  for (const [fKey, el] of Object.entries(mapping)) {
+  for (const side of SIDES) {
+    const entry = SIDE_EDGES[side];
+    const el = dom[entry.hp];
     if (!el) continue;
-    const pieces = getAlivePieces(fKey);
+    const factionOnSide = gameState.sideFaction[side];
+    const pieces = getAlivePieces(factionOnSide);
     const totalHP = pieces.reduce((s, p) => s + p.hp, 0);
-    const maxHP = 6 * 4; // 6棋×4HP
+    const maxHP = 6 * 4;
     const pct = (totalHP / maxHP) * 100;
     el.style.width = pct + '%';
-    el.style.background = colors[fKey];
-    if (pct < 25) el.style.background = '#ff3020';
+    el.style.background = pct < 25 ? '#ff3020' : (colorMap[factionOnSide] || '#888');
   }
 }
 
 function clearEdgeInfo() {
-  for (const edge of [dom.edgeTop, dom.edgeBottom, dom.edgeLeft, dom.edgeRight]) {
-    if (!edge) continue;
-    edge.classList.remove('active-faction');
-    edge.style.color = '';
-    const eEmoji = edge.querySelector('.edge-emoji');
-    const eText = edge.querySelector('.edge-text');
+  for (const side of SIDES) {
+    const entry = SIDE_EDGES[side];
+    const el = dom[entry.edge];
+    if (!el) continue;
+    el.classList.remove('active-faction');
+    el.style.color = '';
+    const eEmoji = el.querySelector('.edge-emoji');
+    const eText = el.querySelector('.edge-text');
     if (eEmoji) eEmoji.textContent = '';
     if (eText) eText.textContent = '';
+  }
+  resetTrapezoid();
+}
+
+// ============================================================
+// 梯形轮廓指示器 — 宽边朝向当前玩家
+// ============================================================
+
+function updateTrapezoid() {
+  const cs = currentSide();
+  if (!cs) { resetTrapezoid(); return; }
+  const board = dom.board;
+  if (!board) return;
+
+  // clip-path梯形：宽边=对应边，窄边=对边
+  const t = 8; // 缩进百分比
+  const clips = {
+    top:    `polygon(${t}% 0%, ${100-t}% 0%, 100% 100%, 0% 100%)`,
+    right:  `polygon(0% 0%, 100% ${t}%, 100% ${100-t}%, 0% 100%)`,
+    bottom: `polygon(0% 0%, 100% 0%, ${100-t}% 100%, ${t}% 100%)`,
+    left:   `polygon(0% ${t}%, 100% 0%, 100% 100%, 0% ${100-t}%)`,
+  };
+
+  board.style.transition = 'clip-path 0.5s ease';
+  board.style.clipPath = clips[cs];
+}
+
+function resetTrapezoid() {
+  if (dom.board) {
+    dom.board.style.clipPath = '';
   }
 }
 
@@ -546,11 +594,15 @@ function clearArrows() {
 // ============================================================
 
 function renderTurnOrder() {
+  const sideNames = { top: '上', right: '右', bottom: '下', left: '左' };
+  const humanSides = gameState.humanSides || [];
   let html = '';
-  gameState.turnOrder.forEach((f, i) => {
+  for (const side of SIDES) {
+    const f = gameState.sideFaction[side];
     const fac = FACTIONS[f];
-    html += `<span class="order-item">${i+1}. ${fac.emoji}${fac.name}</span>`;
-  });
+    const isHuman = humanSides.includes(side);
+    html += `<span class="order-item">${sideNames[side]}·${fac.emoji}${fac.name} ${isHuman ? '👤' : '🤖'}</span>`;
+  }
   dom.orderDisplay.innerHTML = html;
   dom.startOverlay.style.display = 'flex';
   dom.victoryOverlay.style.display = 'none';

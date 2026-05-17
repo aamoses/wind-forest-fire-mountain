@@ -5,6 +5,9 @@ let gameState = {};
 let pointMap = {};      // "col,row" -> pointId
 let pointById = {};     // id -> point object
 
+// 四条边（顺时针方向）
+const SIDES = ['top', 'right', 'bottom', 'left'];
+
 function buildPointLookups() {
   pointMap = {};
   pointById = {};
@@ -38,9 +41,17 @@ function isEliminated(faction) {
   return getAlivePieces(faction).length === 0;
 }
 
+// 当前边
+function currentSide() {
+  if (gameState.sideIndex >= SIDES.length) return null;
+  return SIDES[gameState.sideIndex];
+}
+
+// 当前阵营
 function currentFaction() {
-  if (gameState.turnIndex >= gameState.turnOrder.length) return null;
-  return gameState.turnOrder[gameState.turnIndex];
+  const side = currentSide();
+  if (!side) return null;
+  return gameState.sideFaction[side];
 }
 
 function shuffle(arr) {
@@ -70,15 +81,22 @@ function calcDamage(attackerFaction, defenderFaction, baseDamage) {
 function initGame() {
   buildPointLookups();
 
-  // 随机行动顺序
-  const order = shuffle(['fire','forest','wind','mountain']);
+  // 随机分配四个阵营到四条边
+  const shuffledFactions = shuffle(['fire','forest','wind','mountain']);
+  const sideFaction = {};
+  for (let i = 0; i < SIDES.length; i++) {
+    sideFaction[SIDES[i]] = shuffledFactions[i];
+  }
+
+  // 随机起始边（顺时针第一人）
+  const startIndex = Math.floor(Math.random() * 4);
 
   gameState = {
     phase: 'init',
-    turnOrder: order,
-    turnIndex: 0,
+    sideFaction: sideFaction,
+    sideIndex: startIndex,
     totalTurns: 0,
-    deployTurns: 8,   // 4阵营×2轮，布阵阶段禁攻击
+    deployTurns: 8,
     pieces: [],
     traps: [],
     selectedPieceId: null,
@@ -90,7 +108,7 @@ function initGame() {
     firePieceId: null,
   };
 
-  // 创建棋子
+  // 创建棋子（初始位置不变，按阵营分配）
   let pieceId = 0;
   for (const [faction, posList] of Object.entries(INIT_POS)) {
     for (const pt of posList) {
@@ -149,13 +167,13 @@ function checkAndNextTurn() {
     return;
   }
 
-  gameState.turnOrder = gameState.turnOrder.filter(f => !isEliminated(f));
   nextTurn();
 }
 
 function nextTurn() {
   gameState.totalTurns++;
-  gameState.turnIndex = (gameState.turnIndex + 1) % gameState.turnOrder.length;
+  // 顺时针走：移到下一条边
+  gameState.sideIndex = (gameState.sideIndex + 1) % SIDES.length;
   advanceToAliveFaction();
   updatePieceRender();
   updateActionButtons();
@@ -167,7 +185,7 @@ function nextTurn() {
 function advanceToAliveFaction() {
   let safety = 0;
   while (safety < 10 && isEliminated(currentFaction())) {
-    gameState.turnIndex = (gameState.turnIndex + 1) % gameState.turnOrder.length;
+    gameState.sideIndex = (gameState.sideIndex + 1) % SIDES.length;
     safety++;
   }
   if (isEliminated(currentFaction())) {
@@ -185,5 +203,7 @@ function getCurrentFactionInfo() {
   const cf = currentFaction();
   if (!cf) return '';
   const fac = FACTIONS[cf];
-  return `${fac.emoji}${fac.name}（${fac.slogan}）`;
+  const side = currentSide();
+  const sideNames = { top:'上方', right:'右方', bottom:'下方', left:'左方' };
+  return `${fac.emoji}${fac.name}（${sideNames[side]}·${fac.slogan}）`;
 }
