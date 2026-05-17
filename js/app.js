@@ -91,7 +91,7 @@ function startBattle() {
   dom.startOverlay.style.display = 'none';
   updateUI();
   showMessage('对战开始！' + getCurrentFactionInfo() + ' 的回合');
-  setTimeout(() => AI.checkAndExecute(), 300);
+  setTimeout(() => AI.checkAndExecute(), 150);
 }
 
 // 每回合结束后检查AI
@@ -99,14 +99,14 @@ const originalNextTurn = nextTurn;
 nextTurn = function() {
   originalNextTurn();
   if (gameState.simulating) return;
-  setTimeout(() => AI.checkAndExecute(), 500);
+  setTimeout(() => AI.checkAndExecute(), 200);
 };
 
 const originalCheckAndNextTurn = checkAndNextTurn;
 checkAndNextTurn = function() {
   originalCheckAndNextTurn();
   if (gameState.simulating) return;
-  setTimeout(() => AI.checkAndExecute(), 500);
+  setTimeout(() => AI.checkAndExecute(), 200);
 };
 
 function restartGame() {
