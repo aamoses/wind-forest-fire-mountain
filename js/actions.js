@@ -1,5 +1,33 @@
-// 风林火山·四方乱斗 - 用户交互处理
+// 风林火山·四方乱斗 - 用户交互与战斗系统
 // ============================================================
+
+// ============================================================
+// 战斗目标计算
+// ============================================================
+
+// 获取相邻敌方棋子（近战攻击目标）
+function getMeleeTargets(pointId) {
+  const neighbors = ADJ[pointId] || [];
+  const cf = currentFaction();
+  const targets = [];
+  for (const nid of neighbors) {
+    const piece = getPieceAt(nid);
+    if (piece && piece.faction !== cf) {
+      targets.push(nid);
+    }
+  }
+  return targets;
+}
+
+// 获取相邻己方棋子占据的位置（用于判断不可移动）
+function getOccupiedByAllies(pointId) {
+  const neighbors = ADJ[pointId] || [];
+  const cf = currentFaction();
+  return neighbors.filter(nid => {
+    const piece = getPieceAt(nid);
+    return piece && piece.faction === cf;
+  });
+}
 
 // ============================================================
 // 棋子交互
@@ -73,7 +101,7 @@ function selectPiece(pieceId) {
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
-  showMessage('请选择操作');
+  showMessage('请选择操作：移动 / 攻击 / 技能');
 }
 
 function onPointClick(pointId) {
@@ -98,6 +126,12 @@ function onPointClick(pointId) {
         executeMove(pointId);
       }
       break;
+    case 'attack':
+      // 近战攻击模式
+      if (gameState.validTargets.includes(pointId)) {
+        executeMeleeAttack(pointId);
+      }
+      break;
     case 'trap_place':
       if (gameState.validTargets.includes(pointId)) {
         placeTrap(pointId);
@@ -119,6 +153,64 @@ function onTrapClick(trapId) {
 }
 
 // ============================================================
+// 近战攻击
+// ============================================================
+
+function executeMeleeAttack(targetPointId) {
+  const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
+  if (!piece) return;
+
+  const targetPiece = getPieceAt(targetPointId);
+  if (!targetPiece) return;
+
+  const damage = calcDamage(piece.faction, targetPiece.faction, 2);
+  applyDamageToPiece(targetPiece, damage);
+
+  // 攻击者移动到目标位置
+  piece.position = targetPointId;
+
+  flashPoint(targetPointId, 'flash-explosion');
+
+  const counterInfo = getCounterInfo(piece.faction, targetPiece.faction);
+  showMessage(`${FACTIONS[piece.faction].emoji}近战攻击！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}，已占据其位`);
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  checkAndNextTurn();
+}
+
+// ============================================================
+// 移动逻辑
+// ============================================================
+
+function getValidMoves(pointId) {
+  const neighbors = ADJ[pointId] || [];
+  const occupied = new Set();
+  for (const piece of gameState.pieces) {
+    if (piece.hp > 0) occupied.add(piece.position);
+  }
+  return neighbors.filter(id => !occupied.has(id));
+}
+
+function executeMove(toPointId) {
+  const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
+  if (!piece) return;
+
+  piece.position = toPointId;
+
+  clearActionMode();
+  gameState.selectedPieceId = null;
+  gameState.validTargets = [];
+  updatePieceRender();
+  updateActionButtons();
+  showMessage(`${FACTIONS[piece.faction].emoji} 移动到位置${toPointId}`);
+  nextTurn();
+}
+
+// ============================================================
 // 操作按钮
 // ============================================================
 
@@ -130,7 +222,7 @@ function updateActionButtons() {
   }
 
   if (!gameState.selectedPieceId || gameState.selectedPieceId === null) {
-    dom.actionBar.innerHTML = '<span style="color:#8b7355;font-size:14px;">点击己方棋子开始操作</span>';
+    dom.actionBar.innerHTML = '<span style="color:#8b7355;font-size:13px;">点击己方棋子开始操作</span>';
     return;
   }
 
@@ -141,21 +233,28 @@ function updateActionButtons() {
     html += `<button class="chalk-btn" onclick="cancelSelection()">换棋子</button>`;
   } else if (cf === 'forest') {
     html += `<button class="chalk-btn${gameState.actionMode==='move'?' active':''}" onclick="enterMoveMode()">移动</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='attack'?' active':''}" onclick="enterAttackMode()">攻击</button>`;
     html += `<button class="chalk-btn${gameState.actionMode==='trap_place'?' active':''}" onclick="enterTrapPlaceMode()">布陷阱</button>`;
     html += `<button class="chalk-btn${gameState.actionMode==='trap_detonate'?' active':''}" onclick="enterTrapDetonateMode()">引爆</button>`;
     if (gameState.actionMode) {
-      html += `<button class="chalk-btn" onclick="cancelActionMode()" style="margin-left:8px;opacity:0.7;">取消</button>`;
+      html += `<button class="chalk-btn" onclick="cancelActionMode()" style="opacity:0.7;">取消</button>`;
     }
   } else {
+    // 火、风阵营
     html += `<button class="chalk-btn${gameState.actionMode==='move'?' active':''}" onclick="enterMoveMode()">移动</button>`;
-    html += `<button class="chalk-btn${gameState.actionMode==='attack'||gameState.actionMode==='fire_dir'?' active':''}" onclick="enterAttackMode()">攻击</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='attack'?' active':''}" onclick="enterAttackMode()">攻击</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='fire_dir'||gameState.actionMode==='attack_skill'?' active':''}" onclick="enterSkillMode()">技能</button>`;
     if (gameState.actionMode) {
-      html += `<button class="chalk-btn" onclick="cancelActionMode()" style="margin-left:8px;opacity:0.7;">取消</button>`;
+      html += `<button class="chalk-btn" onclick="cancelActionMode()" style="opacity:0.7;">取消</button>`;
     }
   }
 
   dom.actionBar.innerHTML = html;
 }
+
+// ============================================================
+// 模式进入
+// ============================================================
 
 function enterMoveMode() {
   if (!gameState.selectedPieceId) return;
@@ -172,6 +271,26 @@ function enterMoveMode() {
 
 function enterAttackMode() {
   if (!gameState.selectedPieceId) return;
+  const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
+  if (!piece) return;
+
+  // 近战攻击：显示相邻敌方棋子为红色目标
+  const targets = getMeleeTargets(piece.position);
+  if (targets.length === 0) {
+    showMessage('没有可攻击的相邻敌方棋子，请选择移动或技能');
+    return;
+  }
+
+  gameState.actionMode = 'attack';
+  gameState.validTargets = targets;
+  clearHighlights();
+  highlightPoints(targets, 'valid-attack');
+  updateActionButtons();
+  showMessage('点击红色目标进行近战攻击（伤害2）');
+}
+
+function enterSkillMode() {
+  if (!gameState.selectedPieceId) return;
   const cf = currentFaction();
 
   if (cf === 'fire') {
@@ -181,9 +300,9 @@ function enterAttackMode() {
     clearHighlights();
     renderArrows();
     updateActionButtons();
-    showMessage('请点击方向箭头释放火焰');
+    showMessage('🔥火焰贯穿：点击方向箭头，直线攻击首个目标（伤害2）');
   } else if (cf === 'wind') {
-    gameState.actionMode = 'attack';
+    gameState.actionMode = 'attack_skill';
     const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
     const targets = getWindTargets(piece.position);
     gameState.validTargets = targets.map(t => t.pointId);
@@ -192,7 +311,10 @@ function enterAttackMode() {
     updateActionButtons();
     dom.actionBar.innerHTML +=
       `<button class="chalk-btn active" onclick="executeWindSkill()">确认释放风刃</button>`;
-    showMessage('日字型范围已显示，点击确认释放');
+    showMessage('🌀风刃：日字型AOE，波及所有单位（含友军），各2伤害');
+  } else if (cf === 'mountain') {
+    // 山阵营技能就是走打一体，通过棋子选中触发
+    showMessage('⛰️点击己方棋子进入走打一体模式');
   }
 }
 
@@ -231,6 +353,10 @@ function enterTrapDetonateMode() {
   showMessage('请点击要引爆的陷阱');
 }
 
+// ============================================================
+// 状态管理
+// ============================================================
+
 function cancelSelection() {
   clearActionMode();
   gameState.selectedPieceId = null;
@@ -248,7 +374,7 @@ function cancelActionMode() {
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
-  showMessage('请选择操作');
+  showMessage('请选择操作：移动 / 攻击 / 技能');
 }
 
 function clearActionMode() {
@@ -260,32 +386,4 @@ function clearActionMode() {
   clearHighlights();
   clearArrows();
   dom.effectsLayer.innerHTML = '';
-}
-
-// ============================================================
-// 移动逻辑
-// ============================================================
-
-function getValidMoves(pointId) {
-  const neighbors = ADJ[pointId] || [];
-  const occupied = new Set();
-  for (const piece of gameState.pieces) {
-    if (piece.hp > 0) occupied.add(piece.position);
-  }
-  return neighbors.filter(id => !occupied.has(id));
-}
-
-function executeMove(toPointId) {
-  const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
-  if (!piece) return;
-
-  piece.position = toPointId;
-
-  clearActionMode();
-  gameState.selectedPieceId = null;
-  gameState.validTargets = [];
-  updatePieceRender();
-  updateActionButtons();
-  showMessage(`${FACTIONS[piece.faction].emoji} 移动到位置${toPointId}`);
-  nextTurn();
 }

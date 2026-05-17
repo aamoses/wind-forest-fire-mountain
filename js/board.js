@@ -126,13 +126,13 @@ function updateEdgeInfo() {
   let guideText = '';
   if (selPiece && gameState.phase === 'playing') {
     if (cf === 'mountain') {
-      guideText = '走打一体 | 绿点移动(1步) | 红点攻击';
+      guideText = '走打一体 | 绿:移动(1步) | 红:攻击';
     } else if (cf === 'forest') {
-      guideText = '移动/布陷阱/引爆';
+      guideText = '移动/近战/布陷阱/引爆';
     } else if (cf === 'fire') {
-      guideText = '移动/火焰贯穿(方向选择)';
+      guideText = '移动/近战/火焰贯穿(直线)';
     } else if (cf === 'wind') {
-      guideText = '移动/风刃(日字AOE·波及友军)';
+      guideText = '移动/近战/风刃(日字AOE·伤及友军)';
     }
   } else {
     guideText = '点击己方棋子开始';
