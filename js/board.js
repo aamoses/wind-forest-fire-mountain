@@ -126,7 +126,7 @@ function updateEdgeInfo() {
   let guideText = '';
   if (selPiece && gameState.phase === 'playing') {
     if (cf === 'mountain') {
-      guideText = '走打一体 | 绿:移动(1步) | 红:攻击';
+      guideText = '走打一体 | 绿点:移动(1步) | 红点:攻击';
     } else if (cf === 'forest') {
       guideText = '移动/近战/布陷阱/引爆';
     } else if (cf === 'fire') {
@@ -145,7 +145,6 @@ function updateEdgeInfo() {
   for (const edge of [dom.edgeTop, dom.edgeBottom, dom.edgeLeft, dom.edgeRight]) {
     if (!edge) continue;
     edge.style.color = fac.color;
-    edge.style.setProperty('--edge-color', fac.color);
 
     if (cf) {
       edge.classList.add('active-faction');
@@ -245,16 +244,17 @@ function renderAllPieces() {
     const selClass = piece.id === gameState.selectedPieceId ? ' selected' : '';
     const curClass = (cf === piece.faction && gameState.phase === 'playing') ? ' current-faction' : '';
     const atkClass = (cf === 'mountain' && gameState._mountainAttacks?.includes(piece.position)) ? ' attackable' : '';
-    // HP 显示为点数（1-4）
+    // HP点数圆点
     let hpDots = '';
     for (let i = 0; i < piece.hp; i++) {
-      hpDots += '◆';
+      hpDots += `<span class="piece-hp-dot"></span>`;
     }
     html += `<div class="piece ${piece.faction}${selClass}${curClass}${atkClass}" id="piece-${piece.id}"
-      style="left:${x}px;top:${y}px;--piece-color:${fac.color}"
+      style="left:${x}px;top:${y}px"
       data-piece="${piece.id}">
-      <span class="piece-emoji">${fac.emoji}</span>
-      <span class="hp">${hpDots}</span>
+      <div class="piece-figure">${fac.emoji}</div>
+      <div class="piece-hp">${hpDots}</div>
+      <div class="piece-base"></div>
     </div>`;
   }
   dom.piecesLayer.innerHTML = html;
@@ -314,7 +314,6 @@ function updateUI() {
   const cf = currentFaction();
   if (!cf) return;
 
-  const fac = FACTIONS[cf];
   updateEdgeInfo();
   updateMountainDisplay();
 }

@@ -1,5 +1,5 @@
 /* ================================================================
-   风林火山·四方乱斗 — 3D麻将风战场主题
+   风林火山·四方乱斗 — 战场对决风格
    ================================================================ */
 
 /* ---------- 基础 ---------- */
@@ -10,9 +10,6 @@
   --gold-light: #e0ca7a;
   --gold-dark: #8b6914;
   --bg-deep: #0a0608;
-  --bg-board: #1a100c;
-  --wood: #2a1a0e;
-  --wood-light: #3d2818;
 }
 
 body {
@@ -70,11 +67,8 @@ body {
 .edge-emoji { font-size: 24px; }
 .edge-text { font-size: 13px; font-weight: 600; letter-spacing: 1px; }
 
-/* 上方 0° */
 .edge-top { flex-direction: row; }
-/* 下方 180° */
 .edge-bottom { flex-direction: row-reverse; transform: rotate(180deg); }
-/* 左方 -90° */
 .edge-left {
   flex-direction: column-reverse;
   writing-mode: vertical-rl;
@@ -82,7 +76,6 @@ body {
   min-height: 160px;
   padding: 14px 6px;
 }
-/* 右方 90° */
 .edge-right {
   flex-direction: column;
   writing-mode: vertical-rl;
@@ -112,7 +105,7 @@ body {
   width: 532px;
   height: 460px;
   background:
-    radial-gradient(ellipse at center, rgba(40,25,12,0.95) 0%, rgba(20,10,5,0.98) 60%, rgba(10,5,2,1) 100%);
+    radial-gradient(ellipse at center, rgba(28,18,8,0.95) 0%, rgba(14,8,3,0.98) 60%, rgba(8,4,2,1) 100%);
   border: 2px solid rgba(201,164,75,0.5);
   border-radius: 4px;
   cursor: default;
@@ -125,7 +118,6 @@ body {
 }
 #board-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-/* 中心高亮区 */
 .center-zone {
   position: absolute;
   background: radial-gradient(ellipse at center, rgba(255,180,40,0.15) 0%, rgba(255,180,40,0.03) 60%, transparent 100%);
@@ -186,138 +178,159 @@ body {
 }
 
 /* ================================================================
-   3D 麻将风格棋子
+   3D 迷你兵人棋子 — 底座+人形
    ================================================================ */
 .piece {
   position: absolute;
-  width: 52px; height: 56px;
-  border-radius: 7px;
+  width: 56px; height: 64px;
   transform: translate(-50%, -50%);
   cursor: pointer;
   z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  line-height: 1;
-  border: 2px solid;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, border-width 0.15s;
-  /* 3D麻将牌厚度效果 */
-  box-shadow:
-    0 2px 0 1px rgba(0,0,0,0.5),
-    0 3px 0 2px rgba(0,0,0,0.3),
-    0 5px 10px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-  /* 牌面纹理 */
-  background-image:
-    linear-gradient(160deg,
-      rgba(255,255,255,0.08) 0%,
-      transparent 30%,
-      transparent 70%,
-      rgba(0,0,0,0.15) 100%);
+  justify-content: flex-end;
+  transition: transform 0.18s;
 }
-.piece::before {
-  content: '';
+
+/* 圆形底座（3D展示台） */
+.piece-base {
+  width: 44px; height: 44px;
+  border-radius: 50%;
   position: absolute;
-  top: 3px; left: 6px; right: 6px; height: 30%;
-  border-radius: 4px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
-  pointer-events: none;
+  bottom: 2px;
+  z-index: 0;
+  border: 2px solid;
+  box-shadow:
+    0 3px 0 1px rgba(0,0,0,0.6),
+    0 4px 0 2px rgba(0,0,0,0.35),
+    0 6px 12px rgba(0,0,0,0.5);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.1) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%);
 }
 
-.piece .hp {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  margin-top: -1px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
-  opacity: 0.9;
+/* 士兵人形图标 */
+.piece-figure {
+  position: relative;
+  z-index: 2;
+  font-size: 36px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 6px currentColor);
+  margin-bottom: 12px;
 }
 
-/* 阵营配色 —— 雀龙门麻将牌风格 */
-.piece.fire {
+/* HP点数指示器 */
+.piece-hp {
+  position: absolute;
+  bottom: 5px;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+}
+.piece-hp-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px currentColor;
+  transition: all 0.2s;
+}
+.piece-hp-dot.lost { opacity: 0.2; box-shadow: none; }
+
+/* ========== 阵营配色 ========== */
+.piece.fire .piece-base {
   border-color: #d4302a;
-  color: #ff4a3d;
-  background-color: #3d100a;
+  background-color: #3a0e08;
   box-shadow:
-    0 2px 0 1px rgba(60,12,8,0.7),
-    0 3px 0 2px rgba(40,6,4,0.5),
-    0 5px 10px rgba(0,0,0,0.5),
-    0 0 12px rgba(200,40,20,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    0 3px 0 1px rgba(50,8,4,0.7),
+    0 4px 0 2px rgba(30,5,2,0.5),
+    0 6px 12px rgba(0,0,0,0.5),
+    0 0 14px rgba(220,50,30,0.3);
 }
-.piece.forest {
+.piece.fire .piece-figure { color: #ff3b25; }
+.piece.fire .piece-hp-dot { background: #ff6040; color: #ff6040; }
+
+.piece.forest .piece-base {
   border-color: #1a8a3f;
-  color: #3ddb68;
-  background-color: #082a10;
+  background-color: #062a0e;
   box-shadow:
-    0 2px 0 1px rgba(8,40,14,0.7),
-    0 3px 0 2px rgba(4,25,8,0.5),
-    0 5px 10px rgba(0,0,0,0.5),
-    0 0 12px rgba(26,138,63,0.2),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    0 3px 0 1px rgba(6,40,12,0.7),
+    0 4px 0 2px rgba(3,20,8,0.5),
+    0 6px 12px rgba(0,0,0,0.5),
+    0 0 14px rgba(30,180,60,0.25);
 }
-.piece.wind {
+.piece.forest .piece-figure { color: #3ddb68; }
+.piece.forest .piece-hp-dot { background: #50e878; color: #50e878; }
+
+.piece.wind .piece-base {
   border-color: #c4910a;
-  color: #f5c842;
-  background-color: #2e1e04;
+  background-color: #2e1c04;
   box-shadow:
-    0 2px 0 1px rgba(45,28,6,0.7),
-    0 3px 0 2px rgba(30,18,4,0.5),
-    0 5px 10px rgba(0,0,0,0.5),
-    0 0 14px rgba(196,145,10,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    0 3px 0 1px rgba(40,24,4,0.7),
+    0 4px 0 2px rgba(25,14,2,0.5),
+    0 6px 12px rgba(0,0,0,0.5),
+    0 0 16px rgba(200,150,10,0.3);
 }
-.piece.mountain {
+.piece.wind .piece-figure { color: #f5c842; }
+.piece.wind .piece-hp-dot { background: #f5d060; color: #f5d060; }
+
+.piece.mountain .piece-base {
   border-color: #1a5dba;
-  color: #4da2f5;
-  background-color: #061a35;
+  background-color: #051a32;
   box-shadow:
-    0 2px 0 1px rgba(6,26,50,0.7),
-    0 3px 0 2px rgba(3,16,32,0.5),
-    0 5px 10px rgba(0,0,0,0.5),
-    0 0 14px rgba(26,93,186,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    0 3px 0 1px rgba(4,20,44,0.7),
+    0 4px 0 2px rgba(2,12,28,0.5),
+    0 6px 12px rgba(0,0,0,0.5),
+    0 0 16px rgba(30,100,200,0.3);
+}
+.piece.mountain .piece-figure { color: #4da2f5; }
+.piece.mountain .piece-hp-dot { background: #60b8ff; color: #60b8ff; }
+
+/* 当前行动阵营 */
+.piece.current-faction .piece-base {
+  box-shadow:
+    0 3px 0 1px rgba(0,0,0,0.6),
+    0 4px 0 2px rgba(0,0,0,0.35),
+    0 6px 16px rgba(0,0,0,0.5),
+    0 0 20px 5px currentColor !important;
+}
+.piece.current-faction .piece-figure {
+  animation: soldier-breathe 1.2s ease-in-out infinite alternate;
+}
+@keyframes soldier-breathe {
+  from { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 6px currentColor); }
+  to   { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7)) drop-shadow(0 0 14px currentColor) drop-shadow(0 0 20px currentColor); }
 }
 
-/* 当前行动阵营棋子呼吸光晕 */
-.piece.current-faction {
-  animation: faction-breathe 1.5s ease-in-out infinite alternate;
-}
-@keyframes faction-breathe {
-  from { box-shadow: inherit; }
-  to   { filter: brightness(1.25); }
-}
-
-/* 选中棋子 - 金焰升腾 */
+/* 选中棋子 */
 .piece.selected {
-  border-color: var(--gold-light) !important;
-  border-width: 3px;
-  transform: translate(-50%, -50%) scale(1.12);
+  transform: translate(-50%, -50%) scale(1.15);
   z-index: 10;
+}
+.piece.selected .piece-base {
+  border-color: #ffcc44 !important;
   box-shadow:
-    0 3px 0 2px rgba(100,70,20,0.6),
-    0 5px 0 3px rgba(60,40,10,0.4),
+    0 4px 0 2px rgba(80,50,10,0.7),
+    0 5px 0 3px rgba(50,30,5,0.5),
     0 8px 20px rgba(0,0,0,0.6),
-    0 0 8px 3px rgba(255,200,60,0.4),
-    0 0 22px rgba(255,180,40,0.35),
-    0 0 40px rgba(255,170,30,0.2) !important;
+    0 0 12px 4px rgba(255,200,50,0.5),
+    0 0 30px rgba(255,180,40,0.4) !important;
+}
+.piece.selected .piece-figure {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7)) drop-shadow(0 0 10px gold) drop-shadow(0 0 20px gold) !important;
 }
 
-/* 山阵营可攻击目标 */
-.piece.attackable {
-  animation: pulse-attack 0.5s infinite alternate;
+/* 攻击目标标记 */
+.piece.attackable .piece-base {
   border-color: #ff2010 !important;
-  z-index: 6;
+  animation: pulse-attack-base 0.45s infinite alternate;
   box-shadow:
-    0 2px 0 1px rgba(100,8,4,0.7),
-    0 0 14px 4px rgba(255,30,10,0.7),
-    0 0 28px rgba(255,30,10,0.4) !important;
+    0 3px 0 1px rgba(80,4,2,0.7),
+    0 0 16px 5px rgba(255,20,5,0.7),
+    0 0 28px rgba(255,20,5,0.5) !important;
 }
-@keyframes pulse-attack {
-  from { box-shadow: 0 2px 0 1px rgba(100,8,4,0.7), 0 0 8px 2px rgba(255,30,10,0.4), 0 0 16px rgba(255,30,10,0.2); }
-  to   { box-shadow: 0 2px 0 1px rgba(100,8,4,0.7), 0 0 22px 7px rgba(255,30,10,1), 0 0 36px rgba(255,30,10,0.6); }
+@keyframes pulse-attack-base {
+  from { box-shadow: 0 3px 0 1px rgba(80,4,2,0.7), 0 0 8px 3px rgba(255,20,5,0.4), 0 0 16px rgba(255,20,5,0.2); }
+  to   { box-shadow: 0 3px 0 1px rgba(80,4,2,0.7), 0 0 22px 8px rgba(255,20,5,1), 0 0 36px rgba(255,20,5,0.6); }
 }
 
 /* ---------- 陷阱 ---------- */

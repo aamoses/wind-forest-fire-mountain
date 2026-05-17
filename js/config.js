@@ -45,10 +45,10 @@ const ADJ = {
 
 // 阵营定义
 const FACTIONS = {
-  fire:     { key:'fire',     name:'火', emoji:'🔥', color:'#e74c3c', slogan:'侵掠如火', zone:'top' },
-  forest:   { key:'forest',   name:'林', emoji:'🌲', color:'#27ae60', slogan:'其徐如林', zone:'left' },
-  wind:     { key:'wind',     name:'风', emoji:'🌀', color:'#f1c40f', slogan:'其疾如风', zone:'right' },
-  mountain: { key:'mountain', name:'山', emoji:'⛰️', color:'#2980b9', slogan:'不动如山', zone:'bottom' },
+  fire:     { key:'fire',     name:'火', emoji:'⚔️', color:'#e74c3c', slogan:'侵掠如火', zone:'top' },
+  forest:   { key:'forest',   name:'林', emoji:'🏹', color:'#27ae60', slogan:'其徐如林', zone:'left' },
+  wind:     { key:'wind',     name:'风', emoji:'🐎', color:'#f1c40f', slogan:'其疾如风', zone:'right' },
+  mountain: { key:'mountain', name:'山', emoji:'🛡️', color:'#2980b9', slogan:'不动如山', zone:'bottom' },
 };
 
 // 克制关系: attacker -> { defender: multiplier }
