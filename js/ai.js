@@ -221,6 +221,7 @@ const AI = {
 
     if (action.type === 'move') {
       gameState.selectedPieceId = action.pieceId;
+      schedulePieceAnimation(piece.id, action.from, action.to);
       piece.position = action.to;
       clearActionMode();
       gameState.selectedPieceId = null;
@@ -235,6 +236,7 @@ const AI = {
       if (target) {
         const dmg = calcDamage(faction, target.faction, 2);
         applyDamageToPiece(target, dmg);
+        schedulePieceAnimation(piece.id, action.from, action.to);
         piece.position = action.to;
         flashPoint(action.to, 'flash-explosion');
       }
@@ -269,8 +271,16 @@ const AI = {
       gameState.mountainRemaining = 6;
       gameState.actionMode = 'mountain';
       // 简单执行：移动到目标位置，然后攻击
-      piece.position = action.moveTo;
-      if (action.moveTo2) piece.position = action.moveTo2;
+      const mPiece = gameState.pieces.find(p => p.id === action.pieceId);
+      if (mPiece) {
+        const from1 = mPiece.position;
+        schedulePieceAnimation(mPiece.id, from1, action.moveTo);
+        mPiece.position = action.moveTo;
+        if (action.moveTo2) {
+          schedulePieceAnimation(mPiece.id, action.moveTo, action.moveTo2);
+          mPiece.position = action.moveTo2;
+        }
+      }
       if (action.attackTarget) {
         const target = getPieceAt(action.attackTarget);
         if (target) {

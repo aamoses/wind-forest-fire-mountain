@@ -230,6 +230,8 @@ function handleMountainPointClick(pointId) {
   if (gameState._mountainMoves && gameState._mountainMoves.includes(pointId)) {
     const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
     if (!piece) return;
+    const fromPointId = piece.position;
+    schedulePieceAnimation(piece.id, fromPointId, pointId);
     piece.position = pointId;
     gameState.mountainRemaining--;
 

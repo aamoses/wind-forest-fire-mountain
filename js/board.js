@@ -7,6 +7,8 @@ let dom = {};
 let particles = [];
 let particleCanvas, particleCtx;
 let particleAnimId;
+// 移动动画
+let _pendingAnimations = [];
 
 function cacheDom() {
   dom.board = document.getElementById('board-container');
@@ -237,6 +239,7 @@ function renderBoard() {
   renderPoints();
   renderAllPieces();
   renderTraps();
+  clearHighlights();
 }
 
 function renderSVGLines() {
@@ -328,6 +331,9 @@ function renderAllPieces() {
       });
     }
   }
+
+  // 应用移动动画
+  applyPendingAnimations();
 }
 
 function renderTraps() {
@@ -363,6 +369,30 @@ function updatePieceRender() {
   renderAllPieces();
   renderTraps();
   renderArrows();
+}
+
+function schedulePieceAnimation(pieceId, fromPointId, toPointId) {
+  const fromPt = pointById[fromPointId];
+  const toPt = pointById[toPointId];
+  if (!fromPt || !toPt) return;
+  const fromPos = pos(fromPt.col, fromPt.row);
+  const toPos = pos(toPt.col, toPt.row);
+  _pendingAnimations.push({ pieceId, fromX: fromPos.x, fromY: fromPos.y, toX: toPos.x, toY: toPos.y });
+}
+
+function applyPendingAnimations() {
+  for (const anim of _pendingAnimations) {
+    const el = document.getElementById(`piece-${anim.pieceId}`);
+    if (!el) continue;
+    // 先跳到旧位置
+    el.style.left = anim.fromX + 'px';
+    el.style.top = anim.fromY + 'px';
+    // 强制回流后跳到新位置（触发CSS过渡）
+    el.offsetHeight;
+    el.style.left = anim.toX + 'px';
+    el.style.top = anim.toY + 'px';
+  }
+  _pendingAnimations = [];
 }
 
 // ============================================================

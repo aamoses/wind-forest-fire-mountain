@@ -363,7 +363,10 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  transition: transform 0.2s, filter 0.2s;
+  transition: left 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+              top 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+              filter 0.2s;
   filter: brightness(1);
 }
 
@@ -521,19 +524,21 @@ body::before {
   position: absolute;
   width: 18px; height: 18px;
   border-radius: 50%;
-  background: rgba(39,174,96,0.25);
-  border: 1.5px solid rgba(39,174,96,0.3);
+  background: transparent;
+  border: none;
   transform: translate(-50%, -50%);
   z-index: 3;
   cursor: default;
   pointer-events: none;
-  box-shadow: 0 0 6px rgba(39,174,96,0.1);
+  box-shadow: none;
+  opacity: 0;
 }
 .trap.forest-visible {
   background: rgba(39,174,96,0.6);
-  border-color: rgba(39,174,96,0.8);
+  border: 1.5px solid rgba(39,174,96,0.8);
   cursor: pointer; pointer-events: auto;
   box-shadow: 0 0 12px rgba(39,174,96,0.4);
+  opacity: 1;
 }
 .trap.detonatable {
   background: rgba(255,25,15,0.7) !important;

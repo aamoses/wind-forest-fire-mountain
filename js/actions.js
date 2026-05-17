@@ -167,7 +167,9 @@ function executeMeleeAttack(targetPointId) {
   const damage = calcDamage(piece.faction, targetPiece.faction, 2);
   applyDamageToPiece(targetPiece, damage);
 
-  // 攻击者移动到目标位置
+  // 记录动画：攻击者移动到目标位置
+  const fromPointId = piece.position;
+  schedulePieceAnimation(piece.id, fromPointId, targetPointId);
   piece.position = targetPointId;
 
   flashPoint(targetPointId, 'flash-explosion');
@@ -200,6 +202,8 @@ function executeMove(toPointId) {
   const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
   if (!piece) return;
 
+  const fromPointId = piece.position;
+  schedulePieceAnimation(piece.id, fromPointId, toPointId);
   piece.position = toPointId;
 
   clearActionMode();
