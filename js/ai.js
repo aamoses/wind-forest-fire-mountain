@@ -254,7 +254,7 @@ const AI = {
       gameState.validTargets = [];
       updatePieceRender();
       updateActionButtons();
-      showMessage(`${FACTIONS[faction].name}移动棋子`);
+      showMessage(`${FACTIONS[faction].name}移动兵人`);
       nextTurn();
     } else if (action.type === 'melee') {
       gameState.selectedPieceId = action.pieceId;
@@ -274,7 +274,7 @@ const AI = {
       gameState.validTargets = [];
       updatePieceRender();
       updateActionButtons();
-      showMessage(`${FACTIONS[faction].name}发动近战攻击`);
+      showMessage(`${FACTIONS[faction].name}发动近战交火`);
       checkAndNextTurn();
     } else if (action.type === 'fire_skill') {
       gameState.firePieceId = action.pieceId;
@@ -370,7 +370,7 @@ function executeFireSkillAI(dcol, drow, pieceIdOverride) {
     applyDamageToPiece(target.piece, damage);
     drawFireLine(piece.position, target.pointId);
     const counterInfo = getCounterInfo(piece.faction, target.piece.faction);
-    showMessage(`🔥火焰贯穿！对${FACTIONS[target.piece.faction].name}造成${damage}点伤害${counterInfo}`);
+    showMessage(`🎯精确狙击！对${FACTIONS[target.piece.faction].name}造成${damage}点伤害${counterInfo}`);
   }
 
   gameState.firePieceId = null;

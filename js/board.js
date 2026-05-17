@@ -181,12 +181,12 @@ function updateEdgeInfo() {
     // 构建该边的指引文本
     let guideText = '';
     if (side === cs && selPiece && gameState.phase === 'playing') {
-      if (cf === 'mountain')     guideText = '走打一体 | 绿:移动 | 红:攻击';
-      else if (cf === 'forest')  guideText = '移动 | 近战2 | 布陷阱 | 引爆';
-      else if (cf === 'fire')    guideText = '移动 | 近战2 | 火焰贯穿2(直线)';
-      else if (cf === 'wind')    guideText = '移动 | 近战2 | 风刃2(日字AOE)';
+      if (cf === 'mountain')     guideText = '跑打一体 | 绿:移动 | 红:射击';
+      else if (cf === 'forest')  guideText = '移动 | 近战2 | 部署无人机 | 打击';
+      else if (cf === 'fire')    guideText = '移动 | 近战2 | 狙击2(直线)';
+      else if (cf === 'wind')    guideText = '移动 | 近战2 | 辐射2(日字AOE)';
     } else if (side === cs) {
-      guideText = '点击棋子开始';
+      guideText = '点击兵人开始';
     } else {
       guideText = isHuman ? '👤 等待中...' : '🤖 AI思考中';
     }
@@ -250,7 +250,7 @@ function updateTrapezoid() {
   const el = dom.turnIndicator;
   if (!el) return;
 
-  const t = 8;
+  const t = 20;
   const clips = {
     top:    `polygon(${t}% 0%, ${100-t}% 0%, 100% 100%, 0% 100%)`,
     right:  `polygon(0% 0%, 100% ${t}%, 100% ${100-t}%, 0% 100%)`,
@@ -315,7 +315,8 @@ function resetTrapezoid() {
 // ============================================================
 
 function renderBoard() {
-  renderSVGLines();
+  renderRoads();
+  renderBuildings();
   renderCenterZone();
   renderPoints();
   renderAllPieces();
@@ -323,10 +324,10 @@ function renderBoard() {
   clearHighlights();
 }
 
-function renderSVGLines() {
+// 道路渲染（宽街巷+路标线+路面纹理）
+function renderRoads() {
   const drawn = new Set();
   let lines = '';
-  // 发光层
   let glowLines = '';
   for (const [aStr, neighbors] of Object.entries(ADJ)) {
     const a = parseInt(aStr);
@@ -338,11 +339,55 @@ function renderSVGLines() {
       drawn.add(key);
       const pb = pointById[b];
       const { x: x2, y: y2 } = pos(pb.col, pb.row);
-      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(212,175,55,0.12)" stroke-width="4" stroke-linecap="round"/>`;
-      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(212,175,55,0.35)" stroke-width="1.5" stroke-linecap="round"/>`;
+      // 路面底层（宽路基）
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a2520" stroke-width="10" stroke-linecap="round"/>`;
+      // 路面
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3a3530" stroke-width="7" stroke-linecap="round"/>`;
+      // 路面中央虚线
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(180,170,150,0.25)" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="6,5"/>`;
+      // 路面高光边
+      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(200,190,170,0.12)" stroke-width="8.5" stroke-linecap="round"/>`;
     }
   }
   dom.svg.innerHTML = glowLines + lines;
+}
+
+// 建筑渲染（巷战房屋/仓库/据点）
+function renderBuildings() {
+  let html = '';
+  for (const b of BUILDINGS) {
+    const corners = b.corners.map(id => pointById[id]).filter(Boolean);
+    if (corners.length < 4) continue;
+    // 计算建筑中心点
+    const avgCol = corners.reduce((s, p) => s + p.col, 0) / corners.length;
+    const avgRow = corners.reduce((s, p) => s + p.row, 0) / corners.length;
+    const { x, y } = pos(avgCol, avgRow);
+    // 建筑尺寸 = 角点间距 - 道路宽度
+    const minCol = Math.min(...corners.map(p => p.col));
+    const maxCol = Math.max(...corners.map(p => p.col));
+    const minRow = Math.min(...corners.map(p => p.row));
+    const maxRow = Math.max(...corners.map(p => p.row));
+    const w = (maxCol - minCol) * CELL - 14;
+    const h = (maxRow - minRow) * CELL - 14;
+    html += `<div class="building type-${b.type}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;">
+      <div class="building-roof" style="width:${w}px;height:${h}px;"></div>
+      <div class="building-wall" style="width:${w}px;"></div>
+    </div>`;
+  }
+  // 清除旧建筑（保留pieces-layer之前的建筑层）
+  let buildingLayer = document.getElementById('buildings-layer');
+  if (!buildingLayer) {
+    buildingLayer = document.createElement('div');
+    buildingLayer.id = 'buildings-layer';
+    buildingLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;';
+    const board = document.getElementById('board-container');
+    if (board) {
+      const svg = document.getElementById('board-svg');
+      if (svg) svg.after(buildingLayer);
+      else board.appendChild(buildingLayer);
+    }
+  }
+  buildingLayer.innerHTML = html;
 }
 
 function renderCenterZone() {
@@ -352,6 +397,8 @@ function renderCenterZone() {
   dom.centerZone.style.cssText = `
     left:${topLeft.x}px; top:${topLeft.y}px;
     width:${w}px; height:${h}px;
+    border-radius: 8px;
+    background: radial-gradient(ellipse at center, rgba(80,70,55,0.25) 0%, rgba(50,40,30,0.15) 60%, transparent 100%);
   `;
 }
 
@@ -359,6 +406,7 @@ function renderPoints() {
   let html = '';
   for (const p of POINTS) {
     const { x, y } = pos(p.col, p.row);
+    // 路口标记：小圆形+外环
     html += `<div class="board-point" id="pt-${p.id}"
       style="left:${x}px;top:${y}px"
       data-point="${p.id}"></div>`;
@@ -475,13 +523,46 @@ function applyPendingAnimations() {
   for (const anim of _pendingAnimations) {
     const el = document.getElementById(`piece-${anim.pieceId}`);
     if (!el) continue;
-    // 先跳到旧位置
+
+    // 创建移动轨迹光效
+    const trail = document.createElement('div');
+    trail.className = 'move-trail';
+    const midX = (anim.fromX + anim.toX) / 2;
+    const midY = (anim.fromY + anim.toY) / 2;
+    const dx = anim.toX - anim.fromX;
+    const dy = anim.toY - anim.fromY;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    trail.style.cssText = `
+      left:${midX}px; top:${midY}px;
+      width:${len}px; height:3px;
+      transform:translate(-50%,-50%) rotate(${angle}deg);
+    `;
+    dom.effectsLayer.appendChild(trail);
+    setTimeout(() => { if (trail.parentNode) trail.remove(); }, 600);
+
+    // 旧位置光点残留
+    const ghost = document.createElement('div');
+    ghost.className = 'move-ghost';
+    ghost.style.cssText = `left:${anim.fromX}px; top:${anim.fromY}px;`;
+    dom.effectsLayer.appendChild(ghost);
+    setTimeout(() => { if (ghost.parentNode) ghost.remove(); }, 500);
+
+    // 执行平滑移动
     el.style.left = anim.fromX + 'px';
     el.style.top = anim.fromY + 'px';
-    // 强制回流后跳到新位置（触发CSS过渡）
     el.offsetHeight;
     el.style.left = anim.toX + 'px';
     el.style.top = anim.toY + 'px';
+
+    // 目标点落子闪光
+    setTimeout(() => {
+      const landingFlash = document.createElement('div');
+      landingFlash.className = 'move-landing';
+      landingFlash.style.cssText = `left:${anim.toX}px; top:${anim.toY}px;`;
+      dom.effectsLayer.appendChild(landingFlash);
+      setTimeout(() => { if (landingFlash.parentNode) landingFlash.remove(); }, 400);
+    }, 500);
   }
   _pendingAnimations = [];
 }
@@ -655,7 +736,7 @@ function showVictory(factionKey) {
   gameState.phase = 'victory';
   const fac = FACTIONS[factionKey];
   dom.victoryEmoji.textContent = fac.emoji;
-  dom.victoryMessage.textContent = `${fac.name}阵营获胜！`;
+  dom.victoryMessage.textContent = `${fac.name}小队胜利！`;
   dom.victoryMessage.style.color = fac.color;
   dom.victoryOverlay.style.display = 'flex';
   clearEdgeInfo();

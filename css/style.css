@@ -1,6 +1,6 @@
 /* ================================================================
-   风林火山·四方乱斗 — 国际赛事风格 v2
-   2.5D桌面视角 / 冠军金 / 入场动画 / 段位系统
+   风林火山·四方乱斗 — 巷战版 v3
+   2.5D俯视视角 / 街巷道路 / 建筑 / 现代军事
    ================================================================ */
 
 /* ---------- 根基 ---------- */
@@ -20,11 +20,17 @@
   --text-primary: #e8dcc8;
   --text-secondary: #9a8e78;
   --text-dim:      #5a5040;
+  /* 巷战新增 */
+  --road:        #3a3530;
+  --road-dark:   #2a2520;
+  --road-line:   #5a5550;
+  --rubble:      #4a4038;
+  --building-roof: #5a5048;
 }
 
 body {
   background:
-    radial-gradient(ellipse 80% 60% at 50% 40%, #1a1008 0%, #0c0804 45%, #040202 100%);
+    radial-gradient(ellipse 80% 60% at 50% 40%, #1a1410 0%, #0c0804 45%, #040202 100%);
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", serif;
   color: var(--text-primary);
   min-height: 100vh;
@@ -44,8 +50,8 @@ body::before {
   transform: translate(-50%,-50%);
   width: 1000px; height: 900px;
   background:
-    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(180,120,40,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 35% at 48% 52%, rgba(200,140,50,0.03) 0%, transparent 50%);
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(100,80,40,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 35% at 48% 52%, rgba(120,90,30,0.04) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -59,7 +65,7 @@ body::before {
 }
 
 /* ================================================================
-   2.5D 桌面视角
+   2.5D 巷战视角
    ================================================================ */
 #board-wrapper {
   perspective: 900px;
@@ -69,6 +75,94 @@ body::before {
   transform: rotateX(18deg);
   transform-style: preserve-3d;
   transition: transform 0.6s;
+}
+
+/* ---------- 建筑系统（2.5D俯视屋顶） ---------- */
+.building {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+}
+/* 屋顶主体 */
+.building-roof {
+  position: absolute;
+  border-radius: 2px;
+  box-shadow:
+    2px 3px 0 1px rgba(0,0,0,0.6),
+    3px 5px 8px rgba(0,0,0,0.5);
+}
+/* 屋顶高光面 */
+.building-roof::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+  border-radius: 1px;
+}
+/* 侧面（2.5D深度） */
+.building-wall {
+  position: absolute;
+  bottom: -5px;
+  left: 0; right: 0;
+  height: 6px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.85));
+  border-radius: 0 0 2px 2px;
+}
+
+/* 建筑类型变体 */
+.building.type-warehouse .building-roof  { background: linear-gradient(180deg, #6a6058 0%, #4a4038 100%); }
+.building.type-command .building-roof    { background: linear-gradient(180deg, #5a5858 0%, #3a3838 100%); border: 1px solid rgba(212,175,55,0.3); }
+.building.type-house .building-roof      { background: linear-gradient(180deg, #7a7068 0%, #5a5048 100%); }
+.building.type-armory .building-roof     { background: linear-gradient(180deg, #5a5550 0%, #3a3530 100%); border: 1px solid rgba(200,180,140,0.2); }
+.building.type-sniper_nest .building-roof{ background: linear-gradient(180deg, #4a3a30 0%, #352a22 100%); border: 1px solid rgba(231,76,60,0.2); }
+.building.type-radar .building-roof      { background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%); }
+.building.type-bunker .building-roof     { background: linear-gradient(180deg, #3a4048 0%, #2a3038 100%); border: 1px solid rgba(41,128,185,0.3); }
+.building.type-barracks .building-roof   { background: linear-gradient(180deg, #4a4a4a 0%, #353535 100%); }
+.building.type-drone_hub .building-roof  { background: linear-gradient(180deg, #3a4a3a 0%, #2a3a2a 100%); border: 1px solid rgba(39,174,96,0.25); }
+.building.type-tech_lab .building-roof   { background: linear-gradient(180deg, #3a4040 0%, #2a3030 100%); }
+.building.type-generator .building-roof  { background: linear-gradient(180deg, #4a4a38 0%, #3a3a28 100%); }
+.building.type-storage .building-roof    { background: linear-gradient(180deg, #585048 0%, #484038 100%); }
+
+/* 屋顶附件（烟囱、天线等） */
+.building.type-command .building-roof::before {
+  content: '';
+  position: absolute;
+  top: -4px; right: 6px;
+  width: 3px; height: 5px;
+  background: #777;
+  border-radius: 1px;
+}
+.building.type-radar .building-roof::before {
+  content: '';
+  position: absolute;
+  top: -6px; left: 50%;
+  transform: translateX(-50%);
+  width: 2px; height: 8px;
+  background: #888;
+}
+.building.type-generator .building-roof::before {
+  content: '';
+  position: absolute;
+  top: 2px; right: 4px;
+  width: 6px; height: 4px;
+  background: #555;
+  border-radius: 1px;
+}
+
+/* 沙袋/路障（过渡地带） */
+.barricade {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}
+.barricade::before {
+  content: '';
+  display: block;
+  background: repeating-linear-gradient(90deg, #5a4a30 0px, #5a4a30 8px, #4a3a22 8px, #4a3a22 10px);
+  border-radius: 2px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.5);
 }
 
 /* ================================================================
@@ -329,7 +423,7 @@ body::before {
   width: calc(100% + 24px); height: calc(100% + 24px);
   pointer-events: none;
   z-index: -1;
-  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+  clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
   transition: clip-path 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 /* 内环 */
@@ -337,12 +431,12 @@ body::before {
   content: '';
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(212,175,55,0.45);
+  border: 2px solid rgba(212,175,55,0.7);
   border-radius: 6px;
   box-shadow:
-    0 0 16px rgba(212,175,55,0.15),
-    0 0 40px rgba(212,175,55,0.05),
-    inset 0 0 30px rgba(212,175,55,0.02);
+    0 0 20px rgba(212,175,55,0.25),
+    0 0 50px rgba(212,175,55,0.1),
+    inset 0 0 40px rgba(212,175,55,0.04);
 }
 /* 外环发光 */
 #turn-indicator::after {
@@ -432,14 +526,23 @@ body::before {
 /* ---------- 交叉点 ---------- */
 .board-point {
   position: absolute;
-  width: 10px; height: 10px;
+  width: 14px; height: 14px;
   border-radius: 50%;
-  background: rgba(180,155,100,0.28);
+  background: rgba(60,55,48,0.8);
+  border: 2px solid rgba(100,90,75,0.5);
   transform: translate(-50%, -50%);
   cursor: pointer;
-  z-index: 1;
+  z-index: 3;
   transition: all 0.18s;
-  border: 1px solid rgba(160,130,80,0.18);
+  box-shadow: 0 0 4px rgba(0,0,0,0.3), inset 0 1px 1px rgba(120,110,90,0.2);
+}
+.board-point::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid rgba(80,70,55,0.2);
+  pointer-events: none;
 }
 .board-point:hover {
   background: rgba(220,190,140,0.6);
@@ -491,10 +594,10 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  transition: left 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
-              top 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
-              filter 0.2s;
+  transition: left 0.55s cubic-bezier(0.16, 0.8, 0.22, 1),
+              top 0.55s cubic-bezier(0.16, 0.8, 0.22, 1),
+              transform 0.4s cubic-bezier(0.16, 0.8, 0.22, 1),
+              filter 0.3s;
   filter: brightness(1);
 }
 
@@ -914,6 +1017,44 @@ body::before {
 @keyframes flash-mountain-anim {
   0%   { background: rgba(40,120,220,0.85); box-shadow: 0 0 24px rgba(40,120,220,0.65); }
   100% { background: rgba(40,120,220,0); box-shadow: none; }
+}
+
+/* ---------- 移动轨迹特效 ---------- */
+.move-trail {
+  position: absolute; pointer-events: none; z-index: 15;
+  background: linear-gradient(90deg, transparent, rgba(240,210,96,0.7), rgba(255,255,255,0.9), rgba(240,210,96,0.7), transparent);
+  border-radius: 2px;
+  animation: trail-fade 0.55s ease-out forwards;
+}
+@keyframes trail-fade {
+  0%   { opacity: 1; filter: blur(0px); }
+  100% { opacity: 0; filter: blur(4px); }
+}
+
+.move-ghost {
+  position: absolute; pointer-events: none; z-index: 14;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(240,210,96,0.8), transparent);
+  transform: translate(-50%, -50%);
+  animation: ghost-fade 0.5s ease-out forwards;
+}
+@keyframes ghost-fade {
+  0%   { opacity: 0.8; transform: translate(-50%,-50%) scale(0.5); }
+  50%  { opacity: 0.5; transform: translate(-50%,-50%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.8); }
+}
+
+.move-landing {
+  position: absolute; pointer-events: none; z-index: 15;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.6), rgba(240,210,96,0.2), transparent);
+  transform: translate(-50%, -50%);
+  animation: landing-pulse 0.4s ease-out forwards;
+}
+@keyframes landing-pulse {
+  0%   { opacity: 0.9; transform: translate(-50%,-50%) scale(0.3); }
+  60%  { opacity: 0.4; transform: translate(-50%,-50%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(2); }
 }
 
 /* ---------- 响应式 ---------- */

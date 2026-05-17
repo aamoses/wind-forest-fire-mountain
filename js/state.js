@@ -182,7 +182,7 @@ function nextTurn() {
   updateActionButtons();
   updateUI();
   const info = getCurrentFactionInfo();
-  showMessage(`${info} 的回合`);
+  showMessage(`${info}  的回合`);
 }
 
 function advanceToAliveFaction() {

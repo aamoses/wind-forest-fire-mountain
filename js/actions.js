@@ -49,7 +49,7 @@ function onPieceClick(pieceId) {
 
   // 只能操作自己阵营的棋子
   if (piece.faction !== cf) {
-    showMessage('这不是你的棋子');
+    showMessage('这不是你的兵人');
     return;
   }
 
@@ -61,7 +61,7 @@ function onPieceClick(pieceId) {
       gameState.validTargets = [];
       updatePieceRender();
       updateActionButtons();
-      showMessage('已取消操作，请选择操作');
+      showMessage('已取消操作，请选择行动');
       return;
     } else {
       cancelSelection();
@@ -85,7 +85,7 @@ function selectPiece(pieceId) {
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
-  showMessage('请选择操作：移动 / 攻击 / 技能');
+  showMessage('请选择行动：移动 / 交火 / 技能');
 }
 
 function onPointClick(pointId) {
@@ -103,6 +103,39 @@ function onPointClick(pointId) {
     const piece = getPieceAt(pointId);
     if (piece && piece.faction === cf) {
       onPieceClick(piece.id);
+    } else if (piece && piece.faction !== cf) {
+      // 点击敌方棋子：查找相邻己方棋子，自动准备攻击
+      const neighbors = ADJ[pointId] || [];
+      const selPiece = gameState.selectedPieceId
+        ? gameState.pieces.find(p => p.id === gameState.selectedPieceId && p.hp > 0)
+        : null;
+
+      // 如果已选中棋子且在相邻位置，直接攻击
+      if (selPiece && selPiece.faction === cf && neighbors.includes(selPiece.position)) {
+        gameState.actionMode = 'attack';
+        gameState.validTargets = [pointId];
+        clearHighlights();
+        highlightPoints([pointId], 'valid-attack');
+        updateActionButtons();
+        executeMeleeAttack(pointId);
+        return;
+      }
+
+      // 否则查找是否有己方棋子相邻，自动选中并进入交火模式
+      for (const nid of neighbors) {
+        const allyPiece = getPieceAt(nid);
+        if (allyPiece && allyPiece.faction === cf) {
+          gameState.selectedPieceId = allyPiece.id;
+          gameState.actionMode = 'attack';
+          gameState.validTargets = [pointId];
+          clearHighlights();
+          highlightPoints([pointId], 'valid-attack');
+          updatePieceRender();
+          updateActionButtons();
+          showMessage('点击红色目标确认射击（伤害2）');
+          return;
+        }
+      }
     }
     return;
   }
@@ -144,7 +177,7 @@ function onTrapClick(trapId) {
 // ============================================================
 
 function executeMeleeAttack(targetPointId) {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
   const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
   if (!piece) return;
 
@@ -165,7 +198,7 @@ function executeMeleeAttack(targetPointId) {
     piece.position = targetPointId;
     showMessage(`${FACTIONS[piece.faction].emoji}近战击杀！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}，已占据其位`);
   } else {
-    showMessage(`${FACTIONS[piece.faction].emoji}近战攻击！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}`);
+    showMessage(`${FACTIONS[piece.faction].emoji}近战交火！对${FACTIONS[targetPiece.faction].emoji}造成${damage}点伤害${counterInfo}`);
   }
 
   clearActionMode();
@@ -202,7 +235,7 @@ function executeMove(toPointId) {
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
-  showMessage(`${FACTIONS[piece.faction].emoji} 移动到位置${toPointId}`);
+  showMessage(`${FACTIONS[piece.faction].emoji} 行进至路口${toPointId}`);
   nextTurn();
 }
 
@@ -218,7 +251,7 @@ function updateActionButtons() {
   }
 
   if (!gameState.selectedPieceId || gameState.selectedPieceId === null) {
-    dom.actionBar.innerHTML = '<span style="color:#8b7355;font-size:13px;">点击己方棋子开始操作</span>';
+    dom.actionBar.innerHTML = '<span style="color:#8b7355;font-size:13px;">点击己方兵人开始行动</span>';
     return;
   }
 
@@ -226,12 +259,12 @@ function updateActionButtons() {
 
   if (cf === 'mountain') {
     html += `<button class="chalk-btn" onclick="endMountainTurn()">结束回合</button>`;
-    html += `<button class="chalk-btn" onclick="cancelSelection()">换棋子</button>`;
+    html += `<button class="chalk-btn" onclick="cancelSelection()">换人</button>`;
   } else if (cf === 'forest') {
     html += `<button class="chalk-btn${gameState.actionMode==='move'?' active':''}" onclick="enterMoveMode()">移动</button>`;
     html += `<button class="chalk-btn${gameState.actionMode==='attack'?' active':''}" onclick="enterAttackMode()">攻击</button>`;
-    html += `<button class="chalk-btn${gameState.actionMode==='trap_place'?' active':''}" onclick="enterTrapPlaceMode()">布陷阱</button>`;
-    html += `<button class="chalk-btn${gameState.actionMode==='trap_detonate'?' active':''}" onclick="enterTrapDetonateMode()">引爆</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='trap_place'?' active':''}" onclick="enterTrapPlaceMode()">无人机</button>`;
+    html += `<button class="chalk-btn${gameState.actionMode==='trap_detonate'?' active':''}" onclick="enterTrapDetonateMode()">打击</button>`;
     if (gameState.actionMode) {
       html += `<button class="chalk-btn" onclick="cancelActionMode()" style="opacity:0.7;">取消</button>`;
     }
@@ -262,11 +295,11 @@ function enterMoveMode() {
   clearHighlights();
   highlightPoints(gameState.validTargets, 'valid-move');
   updateActionButtons();
-  showMessage('请点击绿色目标点移动');
+  showMessage('请点击绿色路口移动');
 }
 
 function enterAttackMode() {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
   if (!gameState.selectedPieceId) return;
   const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
   if (!piece) return;
@@ -274,7 +307,7 @@ function enterAttackMode() {
   // 近战攻击：显示相邻敌方棋子为红色目标
   const targets = getMeleeTargets(piece.position);
   if (targets.length === 0) {
-    showMessage('没有可攻击的相邻敌方棋子，请选择移动或技能');
+    showMessage('没有可攻击的相邻敌人，请选择移动或技能');
     return;
   }
 
@@ -283,11 +316,11 @@ function enterAttackMode() {
   clearHighlights();
   highlightPoints(targets, 'valid-attack');
   updateActionButtons();
-  showMessage('点击红色目标进行近战攻击（伤害2）');
+  showMessage('点击红色目标进行近战交火（伤害2）');
 }
 
 function enterSkillMode() {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可使用技能（前2轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可使用技能（第1轮为布阵期）"); return; }
   if (!gameState.selectedPieceId) return;
   const cf = currentFaction();
 
@@ -298,7 +331,7 @@ function enterSkillMode() {
     clearHighlights();
     renderArrows();
     updateActionButtons();
-    showMessage('🔥火焰贯穿：点击方向箭头，直线攻击首个目标（伤害2）');
+    showMessage('🎯精确狙击：点击方向箭头，直线射击首个目标（伤害2）');
   } else if (cf === 'wind') {
     gameState.actionMode = 'attack_skill';
     const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
@@ -309,10 +342,10 @@ function enterSkillMode() {
     updateActionButtons();
     dom.actionBar.innerHTML +=
       `<button class="chalk-btn active" onclick="executeWindSkill()">确认释放风刃</button>`;
-    showMessage('🌀风刃：日字型AOE，波及所有单位（含友军），各2伤害');
+    showMessage('☢️电磁辐射：日字型AOE，波及所有单位（含友军），各2伤害');
   } else if (cf === 'mountain') {
     // 山阵营技能就是走打一体，通过棋子选中触发
-    showMessage('⛰️点击己方棋子进入走打一体模式');
+    showMessage('🔫点击己方兵人进入跑打一体模式');
   }
 }
 
@@ -334,13 +367,13 @@ function enterTrapPlaceMode() {
   clearHighlights();
   highlightPoints(gameState.validTargets, 'trap-target');
   updateActionButtons();
-  showMessage('请点击空位放置陷阱');
+  showMessage('请点击空路口部署无人机');
 }
 
 function enterTrapDetonateMode() {
-  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（第1轮为布阵期）"); return; }
   if (gameState.traps.length === 0) {
-    showMessage('没有已埋的陷阱');
+    showMessage('没有已部署的无人机');
     return;
   }
 
@@ -349,7 +382,7 @@ function enterTrapDetonateMode() {
   clearHighlights();
   updatePieceRender();
   updateActionButtons();
-  showMessage('请点击要引爆的陷阱');
+  showMessage('请点击要打击的无人机');
 }
 
 // ============================================================
@@ -373,7 +406,7 @@ function cancelActionMode() {
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
-  showMessage('请选择操作：移动 / 攻击 / 技能');
+  showMessage('请选择行动：移动 / 交火 / 技能');
 }
 
 function clearActionMode() {
