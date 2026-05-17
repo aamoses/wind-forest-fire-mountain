@@ -77,6 +77,8 @@ function initGame() {
     phase: 'init',
     turnOrder: order,
     turnIndex: 0,
+    totalTurns: 0,
+    deployTurns: 8,   // 4阵营×2轮，布阵阶段禁攻击
     pieces: [],
     traps: [],
     selectedPieceId: null,
@@ -152,6 +154,7 @@ function checkAndNextTurn() {
 }
 
 function nextTurn() {
+  gameState.totalTurns++;
   gameState.turnIndex = (gameState.turnIndex + 1) % gameState.turnOrder.length;
   advanceToAliveFaction();
   updatePieceRender();
@@ -172,6 +175,10 @@ function advanceToAliveFaction() {
     return;
   }
   updateUI();
+}
+
+function isDeployPhase() {
+  return gameState.totalTurns < gameState.deployTurns;
 }
 
 function getCurrentFactionInfo() {

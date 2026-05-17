@@ -157,6 +157,7 @@ function onTrapClick(trapId) {
 // ============================================================
 
 function executeMeleeAttack(targetPointId) {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
   if (!piece) return;
 
@@ -270,6 +271,7 @@ function enterMoveMode() {
 }
 
 function enterAttackMode() {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   if (!gameState.selectedPieceId) return;
   const piece = gameState.pieces.find(p => p.id === gameState.selectedPieceId);
   if (!piece) return;
@@ -290,6 +292,7 @@ function enterAttackMode() {
 }
 
 function enterSkillMode() {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可使用技能（前2轮为布阵期）"); return; }
   if (!gameState.selectedPieceId) return;
   const cf = currentFaction();
 
@@ -340,6 +343,7 @@ function enterTrapPlaceMode() {
 }
 
 function enterTrapDetonateMode() {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   if (gameState.traps.length === 0) {
     showMessage('没有已埋的陷阱');
     return;

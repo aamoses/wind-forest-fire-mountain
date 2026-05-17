@@ -10,6 +10,14 @@
 
 <canvas id="particles-canvas"></canvas>
 
+<!-- ========== 入场动画 ========== -->
+<div id="entrance-overlay" class="hidden">
+  <div class="entrance-title">风 林 火 山</div>
+  <div class="entrance-factions" id="entrance-factions"></div>
+  <div class="entrance-vs" id="entrance-vs" style="display:none;">⚔  VS  ⚔</div>
+  <button id="entrance-skip" onclick="skipEntrance()">跳过 ▸</button>
+</div>
+
 <!-- ========== 主菜单 ========== -->
 <div id="main-menu" class="screen active">
   <div class="menu-container">
@@ -34,15 +42,27 @@
         <span class="btn-desc">4 真人本地对战</span>
       </button>
     </div>
-    <button class="menu-btn small" onclick="showLeaderboard()" style="margin-top:8px;opacity:0.7">
-      <span class="btn-text">🏆 战绩记录</span>
-    </button>
+
+    <!-- 段位 & 排行榜（首页内联） -->
+    <div id="home-leaderboard">
+      <h3>🏆 竞技战绩</h3>
+      <div id="home-rank-badge">
+        <span class="rank-icon" id="rank-icon">🥉</span>
+        <span class="rank-name" id="rank-name">初入江湖</span>
+      </div>
+      <div class="rank-progress"><div class="rank-progress-fill" id="rank-progress-fill" style="width:0%"></div></div>
+      <div class="home-stats" id="home-stats">
+        <div>总场次 <span id="hs-total">0</span></div>
+        <div>胜率 <span id="hs-winrate">-</span></div>
+        <div>最佳阵营 <span id="hs-best">-</span></div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ========== 阵营选择画面 ========== -->
+<!-- ========== 阵营选择 ========== -->
 <div id="faction-select" class="screen">
-  <div class="menu-container">
+  <div class="menu-container" style="max-width:520px;">
     <h2 class="select-title">选择你的阵营</h2>
     <p class="select-desc" id="select-desc"></p>
     <div class="divider"></div>
@@ -60,20 +80,22 @@
 <!-- ========== 战场界面 ========== -->
 <div id="game-screen" class="screen">
   <div id="app">
-    <!-- 上方信息栏（0°- 火视角） -->
+    <!-- 上方信息栏（火视角） -->
     <div class="edge-info edge-top" id="edge-top">
       <span class="edge-emoji"></span>
       <span class="edge-text"></span>
+      <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-top"></div></div>
     </div>
 
     <div id="mid-row">
-      <!-- 左方信息栏（-90°- 林视角） -->
+      <!-- 左方信息栏（林视角） -->
       <div class="edge-info edge-left" id="edge-left">
         <span class="edge-emoji"></span>
         <span class="edge-text"></span>
+        <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-left"></div></div>
       </div>
 
-      <!-- 棋盘区域 -->
+      <!-- 棋盘 -->
       <div id="board-wrapper">
         <div id="board-container">
           <svg id="board-svg"></svg>
@@ -86,20 +108,22 @@
         </div>
         <div id="message-area"></div>
         <div id="mountain-counter" style="display:none;"></div>
-	        <div id="action-bar"></div>
+        <div id="action-bar"></div>
       </div>
 
-      <!-- 右方信息栏（90°- 风视角） -->
+      <!-- 右方信息栏（风视角） -->
       <div class="edge-info edge-right" id="edge-right">
         <span class="edge-emoji"></span>
         <span class="edge-text"></span>
+        <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-right"></div></div>
       </div>
     </div>
 
-    <!-- 下方信息栏（180°- 山视角） -->
+    <!-- 下方信息栏（山视角） -->
     <div class="edge-info edge-bottom" id="edge-bottom">
       <span class="edge-emoji"></span>
       <span class="edge-text"></span>
+      <div class="edge-hp-bar"><div class="edge-hp-fill" id="edge-hp-bottom"></div></div>
     </div>
   </div>
 </div>
@@ -110,6 +134,9 @@
     <div class="overlay-icon">⚔️</div>
     <h2>行动顺序</h2>
     <div id="order-display"></div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+      <span style="color:#ff6040;">●</span> 前两轮为布阵阶段，不可攻击
+    </div>
     <button class="gold-btn" onclick="startBattle()">开始对战</button>
   </div>
 </div>
@@ -123,7 +150,7 @@
   </div>
 </div>
 
-<!-- 排行榜 -->
+<!-- 排行榜弹窗 -->
 <div id="leaderboard-overlay" class="overlay" style="display:none">
   <div class="overlay-content" style="max-width:420px;">
     <h2>🏆 战绩记录</h2>

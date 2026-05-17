@@ -59,6 +59,12 @@ function showFactionSelect(mode, count) {
   }
 
   let html = '';
+  const rulesMap = {
+    fire:     '<span>技能</span> 火焰贯穿：直线首个目标 · 伤害2',
+    forest:   '<span>技能</span> 埋布陷阱：引爆3×3范围 · 伤害2 · 林免疫',
+    wind:     '<span>技能</span> 风刃乱舞：日字AOE波及全场 · 伤害2',
+    mountain: '<span>技能</span> 走打一体：6步预算 · 剩余步数=攻击力',
+  };
   for (const [key, fac] of Object.entries(FACTIONS)) {
     const selected = selectedHumanFactions.includes(key);
     const disabled = selectedHumanFactions.length >= count && !selected;
@@ -69,6 +75,7 @@ function showFactionSelect(mode, count) {
       <span class="fc-emoji">${fac.emoji}</span>
       <span class="fc-name">${fac.name}</span>
       <span class="fc-slogan">${fac.slogan}</span>
+      <span class="fc-rules">${rulesMap[key] || ''}</span>
     </button>`;
   }
   choices.innerHTML = html;
@@ -149,10 +156,15 @@ function startGameWithConfig() {
   cacheDom();
   initParticles();
   initGame();
-  // initGame覆盖了gameState，之后设置模式配置
   gameState.mode = window._pendingMode || 'quad';
   gameState.aiFactions = window._pendingAiFactions || [];
   gameState.humanFactions = window._pendingHumanFactions || ['fire','forest','wind','mountain'];
+
+  // 播放入场动画
+  playEntrance(() => {
+    updateUI();
+    showMessage('行动顺序已随机决定，点击"开始对战"');
+  });
 }
 
 function backToMenu() {
@@ -227,8 +239,125 @@ showVictory = function(factionKey) {
 };
 
 // ============================================================
-// 启动
+// 入场动画
 // ============================================================
+
+let entranceTimer = null;
+let entranceCallback = null;
+
+function playEntrance(onDone) {
+  const overlay = document.getElementById('entrance-overlay');
+  const factionsEl = document.getElementById('entrance-factions');
+  const vsEl = document.getElementById('entrance-vs');
+  if (!overlay || !factionsEl) { onDone(); return; }
+
+  entranceCallback = onDone;
+  overlay.classList.remove('hidden');
+
+  // 构建阵营卡片
+  const allFactions = ['fire', 'forest', 'wind', 'mountain'];
+  let html = '';
+  for (const f of allFactions) {
+    const fac = FACTIONS[f];
+    html += `<div class="entrance-faction" style="color:${fac.color}">
+      <span class="ef-icon">${fac.emoji}</span>
+      <span class="ef-name" style="font-size:18px;font-weight:700;letter-spacing:2px;">${fac.name}</span>
+    </div>`;
+  }
+  factionsEl.innerHTML = html;
+
+  // 2秒后显示VS
+  vsEl.style.display = 'none';
+  setTimeout(() => {
+    vsEl.style.display = 'block';
+  }, 2000);
+
+  // 3.8秒后自动结束
+  entranceTimer = setTimeout(() => {
+    finishEntrance();
+  }, 3800);
+}
+
+function skipEntrance() {
+  if (entranceTimer) {
+    clearTimeout(entranceTimer);
+    entranceTimer = null;
+  }
+  finishEntrance();
+}
+
+function finishEntrance() {
+  const overlay = document.getElementById('entrance-overlay');
+  if (overlay) overlay.classList.add('hidden');
+  if (entranceTimer) {
+    clearTimeout(entranceTimer);
+    entranceTimer = null;
+  }
+  if (entranceCallback) {
+    const cb = entranceCallback;
+    entranceCallback = null;
+    cb();
+  }
+}
+
+// ============================================================
+// 首页排行榜 + 段位系统
+// ============================================================
+
+function updateHomeLeaderboard() {
+  const records = leaderboard.getRecords();
+  const stats = leaderboard.getStats();
+
+  // 计算总战绩
+  let totalGames = records.length;
+  let totalWins = 0;
+  for (const r of records) {
+    if (r.won) totalWins++;
+  }
+  const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+
+  // 段位计算
+  let rankIcon, rankName, progressPct;
+  if (totalWins >= 50) {
+    rankIcon = '👑'; rankName = '天下霸主'; progressPct = 100;
+  } else if (totalWins >= 30) {
+    rankIcon = '💎'; rankName = '无双大将'; progressPct = ((totalWins - 30) / 20) * 100;
+  } else if (totalWins >= 15) {
+    rankIcon = '🥇'; rankName = '百战精英'; progressPct = ((totalWins - 15) / 15) * 100;
+  } else if (totalWins >= 5) {
+    rankIcon = '🥈'; rankName = '沙场新锐'; progressPct = ((totalWins - 5) / 10) * 100;
+  } else {
+    rankIcon = '🥉'; rankName = '初入江湖'; progressPct = (totalWins / 5) * 100;
+  }
+
+  // 最佳阵营
+  let bestFaction = '-';
+  let bestRate = 0;
+  for (const [key, s] of Object.entries(stats)) {
+    if (s.total > 0) {
+      const rate = s.wins / s.total;
+      if (rate > bestRate) {
+        bestRate = rate;
+        bestFaction = (FACTIONS[key]?.emoji || '') + (FACTIONS[key]?.name || key);
+      }
+    }
+  }
+
+  // 更新DOM
+  const ri = document.getElementById('rank-icon');
+  const rn = document.getElementById('rank-name');
+  const pf = document.getElementById('rank-progress-fill');
+  const hsTotal = document.getElementById('hs-total');
+  const hsWinrate = document.getElementById('hs-winrate');
+  const hsBest = document.getElementById('hs-best');
+
+  if (ri) ri.textContent = rankIcon;
+  if (rn) rn.textContent = rankName;
+  if (pf) pf.style.width = progressPct + '%';
+  if (hsTotal) hsTotal.textContent = totalGames;
+  if (hsWinrate) hsWinrate.textContent = totalGames > 0 ? winRate + '%' : '-';
+  if (hsBest) hsBest.textContent = bestFaction;
+}
 
 // ============================================================
 // AI 自动模拟测试（控制台调用: runSimulation()）
@@ -306,6 +435,7 @@ function quickSim() {
 domReady(() => {
   showScreen('main-menu');
   initParticles();
+  updateHomeLeaderboard();
   console.log('风林火山·四方乱斗 已就绪');
   console.log('控制台输入 quickSim() 运行AI模拟测试');
 });

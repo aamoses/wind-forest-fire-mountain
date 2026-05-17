@@ -25,6 +25,7 @@ function getFireTarget(pieceId, dcol, drow) {
 }
 
 function executeFireSkill(dcol, drow) {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   const pieceId = gameState.firePieceId;
   if (!pieceId) return;
 
@@ -75,6 +76,7 @@ function placeTrap(pointId) {
 }
 
 function detonateTrap(trap) {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   const neighbors = ADJ[trap.position] || [];
   const affectedPoints = [trap.position, ...neighbors];
 
@@ -128,6 +130,7 @@ function getWindTargets(pointId) {
 }
 
 function executeWindSkill() {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   const pieceId = gameState.selectedPieceId;
   if (!pieceId) return;
   const piece = gameState.pieces.find(p => p.id === pieceId);
@@ -252,6 +255,7 @@ function handleMountainPointClick(pointId) {
 }
 
 function executeMountainAttack(targetPointId) {
+  if (isDeployPhase()) { showMessage("布阵阶段暂不可攻击（前2轮为布阵期）"); return; }
   const piece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
   if (!piece) return;
 

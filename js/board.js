@@ -30,6 +30,11 @@ function cacheDom() {
   dom.edgeBottom = document.getElementById('edge-bottom');
   dom.edgeLeft = document.getElementById('edge-left');
   dom.edgeRight = document.getElementById('edge-right');
+  // HP血条
+  dom.edgeHpTop = document.getElementById('edge-hp-top');
+  dom.edgeHpBottom = document.getElementById('edge-hp-bottom');
+  dom.edgeHpLeft = document.getElementById('edge-hp-left');
+  dom.edgeHpRight = document.getElementById('edge-hp-right');
   // 粒子画布
   particleCanvas = document.getElementById('particles-canvas');
   if (particleCanvas) {
@@ -153,48 +158,60 @@ window.addEventListener('resize', resizeParticleCanvas);
 
 function updateEdgeInfo() {
   const cf = currentFaction();
-  if (!cf) {
-    clearEdgeInfo();
-    return;
-  }
+  if (!cf) { clearEdgeInfo(); return; }
   const fac = FACTIONS[cf];
   const selPiece = gameState.selectedPieceId !== null
-    ? gameState.pieces.find(p => p.id === gameState.selectedPieceId)
-    : null;
+    ? gameState.pieces.find(p => p.id === gameState.selectedPieceId) : null;
 
-  // 构建操作指引文字
+  // 构建操作指引
   let guideText = '';
   if (selPiece && gameState.phase === 'playing') {
-    if (cf === 'mountain') {
-      guideText = '走打一体 | 绿点:移动(1步) | 红点:攻击';
-    } else if (cf === 'forest') {
-      guideText = '移动/近战/布陷阱/引爆';
-    } else if (cf === 'fire') {
-      guideText = '移动/近战/火焰贯穿(直线)';
-    } else if (cf === 'wind') {
-      guideText = '移动/近战/风刃(日字AOE·伤及友军)';
-    }
+    if (cf === 'mountain')      guideText = '走打一体 | 绿:移动 | 红:攻击';
+    else if (cf === 'forest')   guideText = '移动 | 近战2 | 布陷阱 | 引爆';
+    else if (cf === 'fire')     guideText = '移动 | 近战2 | 火焰贯穿2(直线)';
+    else if (cf === 'wind')     guideText = '移动 | 近战2 | 风刃2(日字AOE)';
   } else {
-    guideText = '点击己方棋子开始';
+    guideText = '点击棋子开始';
   }
 
+  const deployNote = isDeployPhase() ? ' [布阵期·禁攻]' : '';
   const emoji = fac.emoji;
-  const text = `${fac.name} · ${guideText}`;
+  const text = `轮到:${fac.name} · ${guideText}${deployNote}`;
 
-  // 四个方向都更新
+  // 四个方向文字
   for (const edge of [dom.edgeTop, dom.edgeBottom, dom.edgeLeft, dom.edgeRight]) {
     if (!edge) continue;
     edge.style.color = fac.color;
-
-    if (cf) {
-      edge.classList.add('active-faction');
-    } else {
-      edge.classList.remove('active-faction');
-    }
+    if (cf) edge.classList.add('active-faction');
+    else edge.classList.remove('active-faction');
     const eEmoji = edge.querySelector('.edge-emoji');
     const eText = edge.querySelector('.edge-text');
     if (eEmoji) eEmoji.textContent = emoji;
     if (eText) eText.textContent = text;
+  }
+
+  // 更新四个阵营的HP血条
+  updateEdgeHPBars();
+}
+
+function updateEdgeHPBars() {
+  const mapping = {
+    fire: dom.edgeHpTop, forest: dom.edgeHpLeft,
+    wind: dom.edgeHpRight, mountain: dom.edgeHpBottom,
+  };
+  const colors = {
+    fire: '#ff5530', forest: '#45f075',
+    wind: '#f5d860', mountain: '#55b8ff',
+  };
+  for (const [fKey, el] of Object.entries(mapping)) {
+    if (!el) continue;
+    const pieces = getAlivePieces(fKey);
+    const totalHP = pieces.reduce((s, p) => s + p.hp, 0);
+    const maxHP = 6 * 4; // 6棋×4HP
+    const pct = (totalHP / maxHP) * 100;
+    el.style.width = pct + '%';
+    el.style.background = colors[fKey];
+    if (pct < 25) el.style.background = '#ff3020';
   }
 }
 
@@ -420,7 +437,35 @@ function drawFireLine(fromPointId, toPointId) {
   dom.effectsLayer.appendChild(line);
   setTimeout(() => line.remove(), 400);
 
-  flashPoint(toPointId, 'flash-fire');
+  // 精确目标环
+  const ring = document.createElement('div');
+  ring.style.cssText = `
+    position:absolute; z-index:16; pointer-events:none;
+    left:${toPos.x}px; top:${toPos.y}px;
+    width:36px; height:36px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    border:3px solid rgba(255,50,15,0.9);
+    box-shadow: 0 0 14px rgba(255,30,10,0.7), 0 0 30px rgba(255,60,20,0.35);
+    animation: fire-target-ring 0.45s ease-out forwards;
+  `;
+  dom.effectsLayer.appendChild(ring);
+  setTimeout(() => ring.remove(), 500);
+
+  // 紧凑闪光
+  const flash = document.createElement('div');
+  flash.style.cssText = `
+    position:absolute; z-index:12; pointer-events:none;
+    left:${toPos.x}px; top:${toPos.y}px;
+    width:28px; height:28px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:rgba(255,60,20,0.75);
+    box-shadow: 0 0 18px rgba(255,30,10,0.6);
+    animation: flash-fire-anim 0.35s ease-out forwards;
+  `;
+  dom.effectsLayer.appendChild(flash);
+  setTimeout(() => flash.remove(), 400);
 }
 
 function clearAllDynamicElements() {
