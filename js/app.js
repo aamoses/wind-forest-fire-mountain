@@ -230,7 +230,81 @@ showVictory = function(factionKey) {
 // 启动
 // ============================================================
 
+// ============================================================
+// AI 自动模拟测试（控制台调用: runSimulation()）
+// ============================================================
+
+function runSimulation(speedMs = 200) {
+  console.log('=== 风林火山 全流程模拟测试开始 ===');
+
+  // 设置AI-only模式
+  window._pendingMode = 'quad';
+  window._pendingAiFactions = ['fire', 'forest', 'wind', 'mountain'];
+  window._pendingHumanFactions = [];
+
+  showScreen('game-screen');
+  cacheDom();
+  initParticles();
+  initGame();
+
+  gameState.mode = 'quad';
+  gameState.aiFactions = ['fire', 'forest', 'wind', 'mountain'];
+  gameState.humanFactions = [];
+  gameState.phase = 'playing';
+  gameState.startTime = Date.now();
+  advanceToAliveFaction();
+  dom.startOverlay.style.display = 'none';
+  updateUI();
+
+  let turnCount = 0;
+  const maxTurns = 200;
+
+  const simInterval = setInterval(() => {
+    turnCount++;
+
+    if (gameState.phase === 'victory' || turnCount > maxTurns) {
+      clearInterval(simInterval);
+      const duration = ((Date.now() - gameState.startTime) / 1000).toFixed(1);
+      console.log(`=== 模拟结束 ===`);
+      console.log(`总回合数: ${turnCount}`);
+      console.log(`用时: ${duration}秒`);
+      if (gameState.phase === 'victory') {
+        const winner = ['fire','forest','wind','mountain'].find(f => !isEliminated(f));
+        console.log(`胜利者: ${FACTIONS[winner]?.emoji}${FACTIONS[winner]?.name}`);
+      }
+      console.log(`淘汰顺序: ${gameState.eliminated.map(f => FACTIONS[f].name).join(' → ')}`);
+      console.log(`最终存活棋子:`);
+      for (const f of ['fire','forest','wind','mountain']) {
+        const alive = getAlivePieces(f);
+        console.log(`  ${FACTIONS[f].emoji}${FACTIONS[f].name}: ${alive.length}颗棋子 HP=[${alive.map(p=>p.hp).join(',')}]`);
+      }
+      return;
+    }
+
+    const cf = currentFaction();
+    if (cf && gameState.aiFactions.includes(cf)) {
+      // 减少延迟加速模拟
+      const origDelay = AI.delay;
+      AI.delay = { min: 10, max: 30 };
+      AI.executeTurn(cf);
+      AI.delay = origDelay;
+
+      const alive = getAlivePieces(cf);
+      console.log(`回合${turnCount}: ${FACTIONS[cf].emoji}${FACTIONS[cf].name} 行动 (存活${alive.length}棋)`);
+    }
+  }, speedMs);
+
+  return simInterval;
+}
+
+// 快速模拟
+function quickSim() {
+  runSimulation(50);
+}
+
 domReady(() => {
   showScreen('main-menu');
   initParticles();
+  console.log('风林火山·四方乱斗 已就绪');
+  console.log('控制台输入 quickSim() 运行AI模拟测试');
 });
