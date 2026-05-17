@@ -19,7 +19,9 @@ function startGame() {
 }
 
 function restartGame() {
+  stopParticles();
   clearAllDynamicElements();
+  clearEdgeInfo();
   initGame();
 }
 
@@ -29,5 +31,6 @@ function restartGame() {
 
 domReady(() => {
   cacheDom();
+  initParticles();
   initGame();
 });

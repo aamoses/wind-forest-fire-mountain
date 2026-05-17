@@ -1,8 +1,12 @@
-// 风林火山·四方乱斗 - 棋盘渲染与特效
+// 风林火山·四方乱斗 - 棋盘渲染、特效与四方向信息
 // ============================================================
 
-// DOM引用缓存
+// DOM 缓存
 let dom = {};
+// 粒子系统
+let particles = [];
+let particleCanvas, particleCtx;
+let particleAnimId;
 
 function cacheDom() {
   dom.board = document.getElementById('board-container');
@@ -13,8 +17,6 @@ function cacheDom() {
   dom.trapsLayer = document.getElementById('traps-layer');
   dom.effectsLayer = document.getElementById('effects-layer');
   dom.arrowsLayer = document.getElementById('arrows-layer');
-  dom.turnIndicator = document.getElementById('turn-indicator');
-  dom.mountainCounter = document.getElementById('mountain-counter');
   dom.actionBar = document.getElementById('action-bar');
   dom.messageArea = document.getElementById('message-area');
   dom.startOverlay = document.getElementById('start-overlay');
@@ -22,6 +24,151 @@ function cacheDom() {
   dom.orderDisplay = document.getElementById('order-display');
   dom.victoryEmoji = document.getElementById('victory-emoji');
   dom.victoryMessage = document.getElementById('victory-message');
+  // 四方向信息条
+  dom.edgeTop = document.getElementById('edge-top');
+  dom.edgeBottom = document.getElementById('edge-bottom');
+  dom.edgeLeft = document.getElementById('edge-left');
+  dom.edgeRight = document.getElementById('edge-right');
+  // 粒子画布
+  particleCanvas = document.getElementById('particles-canvas');
+  if (particleCanvas) {
+    particleCtx = particleCanvas.getContext('2d');
+  }
+}
+
+// ============================================================
+// 金色粒子背景动画
+// ============================================================
+
+function initParticles() {
+  if (!particleCanvas) return;
+  resizeParticleCanvas();
+  particles = [];
+  const count = 60;
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * particleCanvas.width,
+      y: Math.random() * particleCanvas.height,
+      r: Math.random() * 1.8 + 0.4,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3 - 0.15,
+      alpha: Math.random() * 0.5 + 0.1,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+  animateParticles();
+}
+
+function resizeParticleCanvas() {
+  if (!particleCanvas) return;
+  particleCanvas.width = window.innerWidth;
+  particleCanvas.height = window.innerHeight;
+}
+
+function animateParticles() {
+  if (!particleCtx || !particleCanvas) return;
+  particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.pulse += 0.02;
+
+    // 边界循环
+    if (p.x < -10) p.x = particleCanvas.width + 10;
+    if (p.x > particleCanvas.width + 10) p.x = -10;
+    if (p.y < -10) p.y = particleCanvas.height + 10;
+    if (p.y > particleCanvas.height + 10) p.y = -10;
+
+    const flicker = p.alpha + Math.sin(p.pulse) * 0.15;
+    particleCtx.beginPath();
+    particleCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    particleCtx.fillStyle = `rgba(201,164,75,${Math.max(0.05, Math.min(0.7, flicker))})`;
+    particleCtx.fill();
+
+    // 偶尔绘制光晕
+    if (Math.sin(p.pulse) > 0.7) {
+      particleCtx.beginPath();
+      particleCtx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
+      particleCtx.fillStyle = `rgba(255,200,100,${Math.min(0.15, flicker * 0.3)})`;
+      particleCtx.fill();
+    }
+  }
+
+  particleAnimId = requestAnimationFrame(animateParticles);
+}
+
+function stopParticles() {
+  if (particleAnimId) {
+    cancelAnimationFrame(particleAnimId);
+    particleAnimId = null;
+  }
+}
+
+window.addEventListener('resize', resizeParticleCanvas);
+
+// ============================================================
+// 四方向信息更新
+// ============================================================
+
+function updateEdgeInfo() {
+  const cf = currentFaction();
+  if (!cf) {
+    clearEdgeInfo();
+    return;
+  }
+  const fac = FACTIONS[cf];
+  const selPiece = gameState.selectedPieceId !== null
+    ? gameState.pieces.find(p => p.id === gameState.selectedPieceId)
+    : null;
+
+  // 构建操作指引文字
+  let guideText = '';
+  if (selPiece && gameState.phase === 'playing') {
+    if (cf === 'mountain') {
+      guideText = '走打一体 | 绿点移动(1步) | 红点攻击';
+    } else if (cf === 'forest') {
+      guideText = '移动/布陷阱/引爆';
+    } else if (cf === 'fire') {
+      guideText = '移动/火焰贯穿(方向选择)';
+    } else if (cf === 'wind') {
+      guideText = '移动/风刃(日字AOE·波及友军)';
+    }
+  } else {
+    guideText = '点击己方棋子开始';
+  }
+
+  const emoji = fac.emoji;
+  const text = `${fac.name} · ${guideText}`;
+
+  // 四个方向都更新
+  for (const edge of [dom.edgeTop, dom.edgeBottom, dom.edgeLeft, dom.edgeRight]) {
+    if (!edge) continue;
+    edge.style.color = fac.color;
+    edge.style.setProperty('--edge-color', fac.color);
+
+    if (cf) {
+      edge.classList.add('active-faction');
+    } else {
+      edge.classList.remove('active-faction');
+    }
+    const eEmoji = edge.querySelector('.edge-emoji');
+    const eText = edge.querySelector('.edge-text');
+    if (eEmoji) eEmoji.textContent = emoji;
+    if (eText) eText.textContent = text;
+  }
+}
+
+function clearEdgeInfo() {
+  for (const edge of [dom.edgeTop, dom.edgeBottom, dom.edgeLeft, dom.edgeRight]) {
+    if (!edge) continue;
+    edge.classList.remove('active-faction');
+    edge.style.color = '';
+    const eEmoji = edge.querySelector('.edge-emoji');
+    const eText = edge.querySelector('.edge-text');
+    if (eEmoji) eEmoji.textContent = '';
+    if (eText) eText.textContent = '';
+  }
 }
 
 // ============================================================
@@ -49,7 +196,8 @@ function renderSVGLines() {
       drawn.add(key);
       const pb = pointById[b];
       const { x: x2, y: y2 } = pos(pb.col, pb.row);
-      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(200,165,100,0.5)" stroke-width="2" stroke-linecap="round"/>`;
+      // 金色棋盘线
+      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(201,164,75,0.4)" stroke-width="1.8" stroke-linecap="round"/>`;
     }
   }
   dom.svg.innerHTML = lines;
@@ -76,10 +224,13 @@ function renderPoints() {
   dom.pointsLayer.innerHTML = html;
 
   for (const p of POINTS) {
-    document.getElementById(`pt-${p.id}`).addEventListener('click', (e) => {
-      e.stopPropagation();
-      onPointClick(p.id);
-    });
+    const el = document.getElementById(`pt-${p.id}`);
+    if (el) {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPointClick(p.id);
+      });
+    }
   }
 }
 
@@ -94,20 +245,29 @@ function renderAllPieces() {
     const selClass = piece.id === gameState.selectedPieceId ? ' selected' : '';
     const curClass = (cf === piece.faction && gameState.phase === 'playing') ? ' current-faction' : '';
     const atkClass = (cf === 'mountain' && gameState._mountainAttacks?.includes(piece.position)) ? ' attackable' : '';
+    // HP 显示为点数（1-4）
+    let hpDots = '';
+    for (let i = 0; i < piece.hp; i++) {
+      hpDots += '◆';
+    }
     html += `<div class="piece ${piece.faction}${selClass}${curClass}${atkClass}" id="piece-${piece.id}"
       style="left:${x}px;top:${y}px;--piece-color:${fac.color}"
       data-piece="${piece.id}">
-      ${fac.emoji}<span class="hp">${piece.hp}</span>
+      <span class="piece-emoji">${fac.emoji}</span>
+      <span class="hp">${hpDots}</span>
     </div>`;
   }
   dom.piecesLayer.innerHTML = html;
 
   for (const piece of gameState.pieces) {
     if (piece.hp <= 0) continue;
-    document.getElementById(`piece-${piece.id}`).addEventListener('click', (e) => {
-      e.stopPropagation();
-      onPieceClick(piece.id);
-    });
+    const el = document.getElementById(`piece-${piece.id}`);
+    if (el) {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPieceClick(piece.id);
+      });
+    }
   }
 }
 
@@ -147,15 +307,30 @@ function updatePieceRender() {
 }
 
 // ============================================================
+// UI 状态更新
+// ============================================================
+
+function updateUI() {
+  const cf = currentFaction();
+  if (!cf) return;
+
+  const fac = FACTIONS[cf];
+  updateEdgeInfo();
+  updateMountainDisplay();
+}
+
+function showMessage(msg) {
+  if (dom.messageArea) dom.messageArea.textContent = msg;
+}
+
+// ============================================================
 // 特效系统
 // ============================================================
 
 function clearHighlights() {
   for (const p of POINTS) {
     const el = document.getElementById(`pt-${p.id}`);
-    if (el) {
-      el.classList.remove('valid-move', 'valid-attack', 'trap-target');
-    }
+    if (el) el.classList.remove('valid-move', 'valid-attack', 'trap-target');
   }
 }
 
@@ -176,7 +351,7 @@ function flashPoint(pointId, className) {
     left:${x}px; top:${y}px;
     width:${CELL*1.1}px; height:${CELL*1.1}px;
     transform:translate(-50%,-50%);
-    border-radius:50%;
+    border-radius:4px;
   `;
   flash.className = className;
   dom.effectsLayer.appendChild(flash);
@@ -192,12 +367,13 @@ function drawFireLine(fromPointId, toPointId) {
   const line = document.createElement('div');
   line.style.cssText = `
     position:absolute; z-index:15; pointer-events:none;
-    background:rgba(231,76,60,0.8);
+    background:rgba(231,76,60,0.85);
     transform-origin:left center;
     height:4px; border-radius:2px;
     left:${fromPos.x}px; top:${fromPos.y}px;
     width:${Math.hypot(toPos.x-fromPos.x, toPos.y-fromPos.y)}px;
     transform:rotate(${Math.atan2(toPos.y-fromPos.y, toPos.x-fromPos.x)}rad);
+    box-shadow: 0 0 8px rgba(255,60,30,0.6);
     animation:flash-fire-anim 0.35s ease-out forwards;
   `;
   dom.effectsLayer.appendChild(line);
@@ -228,7 +404,7 @@ function renderArrows() {
 
   const pt = pointById[piece.position];
   const { x, y } = pos(pt.col, pt.row);
-  const dist = 34;
+  const dist = 36;
 
   for (const [dc, dr, label] of DIRECTIONS) {
     const ax = x + dc * dist;
@@ -262,4 +438,14 @@ function renderTurnOrder() {
   dom.orderDisplay.innerHTML = html;
   dom.startOverlay.style.display = 'flex';
   dom.victoryOverlay.style.display = 'none';
+}
+
+function showVictory(factionKey) {
+  gameState.phase = 'victory';
+  const fac = FACTIONS[factionKey];
+  dom.victoryEmoji.textContent = fac.emoji;
+  dom.victoryMessage.textContent = `${fac.emoji}${fac.name}阵营获胜！`;
+  dom.victoryMessage.style.color = fac.color;
+  dom.victoryOverlay.style.display = 'flex';
+  clearEdgeInfo();
 }

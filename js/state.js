@@ -180,31 +180,3 @@ function getCurrentFactionInfo() {
   const fac = FACTIONS[cf];
   return `${fac.emoji}${fac.name}（${fac.slogan}）`;
 }
-
-function updateUI() {
-  const cf = currentFaction();
-  if (!cf) {
-    dom.turnIndicator.innerHTML = '';
-    return;
-  }
-  const fac = FACTIONS[cf];
-  dom.turnIndicator.innerHTML =
-    `<span class="turn-emoji" style="color:${fac.color}">${fac.emoji}</span>
-     <span style="color:${fac.color}">${fac.name}的回合</span>`;
-  dom.turnIndicator.style.color = fac.color;
-  updateMountainDisplay();
-}
-
-function showVictory(factionKey) {
-  gameState.phase = 'victory';
-  const fac = FACTIONS[factionKey];
-  dom.victoryEmoji.textContent = fac.emoji;
-  dom.victoryMessage.textContent = `${fac.emoji}${fac.name}阵营获胜！`;
-  dom.victoryMessage.style.color = fac.color;
-  dom.victoryOverlay.style.display = 'flex';
-  updateUI();
-}
-
-function showMessage(msg) {
-  dom.messageArea.textContent = msg;
-}

@@ -3,51 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>风林火山·四方乱斗 - 课间对战</title>
+<title>风林火山·四方乱斗</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
+<canvas id="particles-canvas"></canvas>
+
 <div id="app">
-  <div id="header">
-    <h1>风林火山·四方乱斗</h1>
-    <span id="brand">课间对战</span>
+  <!-- ========== 上方信息栏（0°- 火视角） ========== -->
+  <div class="edge-info edge-top" id="edge-top">
+    <span class="edge-emoji"></span>
+    <span class="edge-text"></span>
   </div>
 
-  <div id="info-bar">
-    <div id="turn-indicator"></div>
-    <div id="mountain-counter"></div>
+  <div id="mid-row">
+    <!-- ========== 左方信息栏（270°- 林视角） ========== -->
+    <div class="edge-info edge-left" id="edge-left">
+      <span class="edge-emoji"></span>
+      <span class="edge-text"></span>
+    </div>
+
+    <!-- ========== 棋盘区域 ========== -->
+    <div id="board-wrapper">
+      <div id="board-container">
+        <svg id="board-svg"></svg>
+        <div class="center-zone" id="center-zone"></div>
+        <div id="points-layer"></div>
+        <div id="pieces-layer"></div>
+        <div id="traps-layer"></div>
+        <div id="effects-layer"></div>
+        <div id="arrows-layer"></div>
+      </div>
+      <div id="message-area"></div>
+      <div id="action-bar"></div>
+    </div>
+
+    <!-- ========== 右方信息栏（90°- 风视角） ========== -->
+    <div class="edge-info edge-right" id="edge-right">
+      <span class="edge-emoji"></span>
+      <span class="edge-text"></span>
+    </div>
   </div>
 
-  <div id="board-container">
-    <svg id="board-svg"></svg>
-    <div class="center-zone" id="center-zone"></div>
-    <div id="points-layer"></div>
-    <div id="pieces-layer"></div>
-    <div id="traps-layer"></div>
-    <div id="effects-layer"></div>
-    <div id="arrows-layer"></div>
+  <!-- ========== 下方信息栏（180°- 山视角） ========== -->
+  <div class="edge-info edge-bottom" id="edge-bottom">
+    <span class="edge-emoji"></span>
+    <span class="edge-text"></span>
   </div>
-
-  <div id="action-bar"></div>
-  <div id="message-area"></div>
 </div>
 
-<!-- 开始画面 -->
+<!-- 开始弹窗 -->
 <div id="start-overlay" class="overlay">
   <div class="overlay-content">
-    <h2>⚔️ 行动顺序</h2>
+    <div class="overlay-icon">⚔️</div>
+    <h2>行动顺序</h2>
     <div id="order-display"></div>
-    <button id="start-btn" onclick="startGame()">开始对战</button>
+    <button class="gold-btn" onclick="startGame()">开始对战</button>
   </div>
 </div>
 
-<!-- 胜利画面 -->
+<!-- 胜利弹窗 -->
 <div id="victory-overlay" class="overlay" style="display:none">
   <div class="overlay-content">
     <span id="victory-emoji"></span>
     <h2 id="victory-message"></h2>
-    <button id="restart-btn" onclick="restartGame()">再来一局</button>
+    <button class="gold-btn" onclick="restartGame()">再来一局</button>
   </div>
 </div>
 
