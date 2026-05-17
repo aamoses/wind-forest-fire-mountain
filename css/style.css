@@ -528,21 +528,25 @@ body::before {
   position: absolute;
   width: 14px; height: 14px;
   border-radius: 50%;
-  background: rgba(60,55,48,0.8);
-  border: 2px solid rgba(100,90,75,0.5);
+  background: transparent;
+  border: none;
   transform: translate(-50%, -50%);
   cursor: pointer;
   z-index: 3;
   transition: all 0.18s;
-  box-shadow: 0 0 4px rgba(0,0,0,0.3), inset 0 1px 1px rgba(120,110,90,0.2);
+  box-shadow: none;
 }
 .board-point::after {
   content: '';
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 1px solid rgba(80,70,55,0.2);
+  border: 1px solid transparent;
   pointer-events: none;
+}
+.board-point:hover {
+  background: rgba(180,160,130,0.5);
+  box-shadow: 0 0 12px rgba(180,160,130,0.3);
 }
 .board-point:hover {
   background: rgba(220,190,140,0.6);
@@ -692,24 +696,27 @@ body::before {
 .piece.mountain .piece-figure { color: #4da8ff; }
 .piece.mountain .piece-hp-dot { background: #55b8ff; color: #55b8ff; }
 
-/* 当前行动阵营 */
+/* 当前行动阵营 — 阵营色强发光 */
 .piece.current-faction .piece-base {
   box-shadow:
     0 4px 0 1px rgba(0,0,0,0.7),
     0 5px 0 3px rgba(0,0,0,0.4),
     0 8px 20px rgba(0,0,0,0.5),
-    0 0 28px 8px var(--gold-glow) !important;
-  animation: champion-pulse 1.5s ease-in-out infinite;
+    0 0 20px 6px currentColor !important;
+  animation: champion-pulse 1.2s ease-in-out infinite;
 }
 .piece.current-faction .piece-figure {
-  animation: champion-breathe 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px currentColor) !important;
+  animation: champion-breathe 1.2s ease-in-out infinite;
 }
 @keyframes champion-pulse {
-  0%,100% { box-shadow: 0 4px 0 1px rgba(0,0,0,0.7),0 5px 0 3px rgba(0,0,0,0.4),0 8px 20px rgba(0,0,0,0.5),0 0 28px 8px var(--gold-glow); }
-  50%     { box-shadow: 0 4px 0 1px rgba(0,0,0,0.7),0 5px 0 3px rgba(0,0,0,0.4),0 8px 20px rgba(0,0,0,0.5),0 0 44px 16px rgba(240,210,80,0.7); }
+  0%,100% { box-shadow: 0 4px 0 1px rgba(0,0,0,0.7),0 5px 0 3px rgba(0,0,0,0.4),0 8px 20px rgba(0,0,0,0.5),0 0 20px 6px currentColor; }
+  50%     { box-shadow: 0 4px 0 1px rgba(0,0,0,0.7),0 5px 0 3px rgba(0,0,0,0.4),0 8px 20px rgba(0,0,0,0.5),0 0 40px 14px currentColor; }
 }
 @keyframes champion-breathe {
-  from { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7)) drop-shadow(0 0 8px currentColor); }
+  0%,100% { filter: drop-shadow(0 0 8px currentColor); }
+  50%     { filter: drop-shadow(0 0 18px currentColor); }
+}
   to   { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.8)) drop-shadow(0 0 18px currentColor) drop-shadow(0 0 28px var(--gold-bright)); }
 }
 

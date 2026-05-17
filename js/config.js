@@ -60,12 +60,12 @@ const BUILDINGS = [
   { corners:[29,30,31,32], type:'storage' },
 ];
 
-// 阵营定义（巷战主题）
+// 阵营定义（风林火山 — 现代兵种技能）
 const FACTIONS = {
-  fire:     { key:'fire',     name:'狙击手', emoji:'🎯', color:'#e74c3c', slogan:'百步穿杨', zone:'top', skillName:'精确狙击', skillDesc:'直线贯穿·命中首个目标' },
-  forest:   { key:'forest',   name:'无人机', emoji:'🛸', color:'#27ae60', slogan:'天眼侦查', zone:'left', skillName:'无人机打击', skillDesc:'部署无人机·引爆AOE' },
-  wind:     { key:'wind',     name:'辐射兵', emoji:'☢️', color:'#c0c020', slogan:'电磁脉冲', zone:'right', skillName:'电磁辐射', skillDesc:'日字AOE·含友伤' },
-  mountain: { key:'mountain', name:'机枪手', emoji:'🔫', color:'#2980b9', slogan:'火力压制', zone:'bottom', skillName:'跑打一体', skillDesc:'4步移动+射击' },
+  fire:     { key:'fire',     name:'火', emoji:'火', color:'#e74c3c', slogan:'侵掠如火', zone:'top', skillName:'狙击', skillDesc:'直线贯穿·命中首个目标' },
+  forest:   { key:'forest',   name:'林', emoji:'林', color:'#27ae60', slogan:'其徐如林', zone:'left', skillName:'无人机', skillDesc:'部署无人机·引爆AOE' },
+  wind:     { key:'wind',     name:'风', emoji:'风', color:'#c0c020', slogan:'其疾如风', zone:'right', skillName:'电磁辐射', skillDesc:'日字AOE·含友伤' },
+  mountain: { key:'mountain', name:'山', emoji:'山', color:'#2980b9', slogan:'不动如山', zone:'bottom', skillName:'机枪', skillDesc:'4步移动+射击' },
 };
 
 // SVG兵人形象（现代军事风格 · 巷战版）

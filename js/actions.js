@@ -85,6 +85,14 @@ function selectPiece(pieceId) {
   gameState.validTargets = [];
   updatePieceRender();
   updateActionButtons();
+  // 自动显示可移动路口
+  const piece = gameState.pieces.find(p => p.id === pieceId);
+  if (piece) {
+    const moves = getValidMoves(piece.position);
+    clearHighlights();
+    highlightPoints(moves, 'valid-move');
+    gameState._autoMoves = moves;
+  }
   showMessage('请选择行动：移动 / 交火 / 技能');
 }
 

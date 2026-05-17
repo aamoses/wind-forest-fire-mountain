@@ -340,13 +340,13 @@ function renderRoads() {
       const pb = pointById[b];
       const { x: x2, y: y2 } = pos(pb.col, pb.row);
       // 路面底层（宽路基）
-      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a2520" stroke-width="10" stroke-linecap="round"/>`;
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a2520" stroke-width="12" stroke-linecap="round"/>`;
       // 路面
-      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3a3530" stroke-width="7" stroke-linecap="round"/>`;
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3d3830" stroke-width="7" stroke-linecap="round"/>`;
       // 路面中央虚线
-      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(180,170,150,0.25)" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="6,5"/>`;
+      glowLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(140,125,100,0.3)" stroke-width="1" stroke-linecap="round" stroke-dasharray="4,8"/>`;
       // 路面高光边
-      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(200,190,170,0.12)" stroke-width="8.5" stroke-linecap="round"/>`;
+      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(100,85,65,0.2)" stroke-width="9" stroke-linecap="round"/>`;
     }
   }
   dom.svg.innerHTML = glowLines + lines;
