@@ -10,65 +10,124 @@
 
 <canvas id="particles-canvas"></canvas>
 
-<div id="app">
-  <!-- ========== 上方信息栏（0°- 火视角） ========== -->
-  <div class="edge-info edge-top" id="edge-top">
-    <span class="edge-emoji"></span>
-    <span class="edge-text"></span>
-  </div>
-
-  <div id="mid-row">
-    <!-- ========== 左方信息栏（270°- 林视角） ========== -->
-    <div class="edge-info edge-left" id="edge-left">
-      <span class="edge-emoji"></span>
-      <span class="edge-text"></span>
+<!-- ========== 主菜单 ========== -->
+<div id="main-menu" class="screen active">
+  <div class="menu-container">
+    <div class="menu-emblem">⚔</div>
+    <h1 class="menu-title">风林火山</h1>
+    <p class="menu-subtitle">四方乱斗</p>
+    <div class="menu-divider"></div>
+    <div class="menu-buttons">
+      <button class="menu-btn" onclick="selectMode('single')">
+        <span class="btn-icon">⚔</span>
+        <span class="btn-text">单人修习</span>
+        <span class="btn-desc">1 真人 vs 3 AI</span>
+      </button>
+      <button class="menu-btn" onclick="selectMode('dual')">
+        <span class="btn-icon">🤝</span>
+        <span class="btn-text">双人组阵</span>
+        <span class="btn-desc">2 真人组队 vs 2 AI</span>
+      </button>
+      <button class="menu-btn" onclick="selectMode('quad')">
+        <span class="btn-icon">👥</span>
+        <span class="btn-text">四方会战</span>
+        <span class="btn-desc">4 真人本地对战</span>
+      </button>
     </div>
-
-    <!-- ========== 棋盘区域 ========== -->
-    <div id="board-wrapper">
-      <div id="board-container">
-        <svg id="board-svg"></svg>
-        <div class="center-zone" id="center-zone"></div>
-        <div id="points-layer"></div>
-        <div id="pieces-layer"></div>
-        <div id="traps-layer"></div>
-        <div id="effects-layer"></div>
-        <div id="arrows-layer"></div>
-      </div>
-      <div id="message-area"></div>
-      <div id="action-bar"></div>
-    </div>
-
-    <!-- ========== 右方信息栏（90°- 风视角） ========== -->
-    <div class="edge-info edge-right" id="edge-right">
-      <span class="edge-emoji"></span>
-      <span class="edge-text"></span>
-    </div>
-  </div>
-
-  <!-- ========== 下方信息栏（180°- 山视角） ========== -->
-  <div class="edge-info edge-bottom" id="edge-bottom">
-    <span class="edge-emoji"></span>
-    <span class="edge-text"></span>
+    <button class="menu-btn small" onclick="showLeaderboard()" style="margin-top:8px;opacity:0.7">
+      <span class="btn-text">🏆 战绩记录</span>
+    </button>
   </div>
 </div>
 
-<!-- 开始弹窗 -->
-<div id="start-overlay" class="overlay">
+<!-- ========== 阵营选择画面 ========== -->
+<div id="faction-select" class="screen">
+  <div class="menu-container">
+    <h2 class="select-title">选择你的阵营</h2>
+    <p class="select-desc" id="select-desc"></p>
+    <div class="divider"></div>
+    <div class="faction-choices" id="faction-choices"></div>
+    <div class="select-info" id="select-info"></div>
+    <button class="menu-btn small" onclick="confirmFactionSelection()" id="confirm-faction-btn" style="display:none;">
+      <span class="btn-text">确认并开始</span>
+    </button>
+    <button class="menu-btn small" onclick="backToMenu()" style="margin-top:8px;opacity:0.6;">
+      <span class="btn-text">返回</span>
+    </button>
+  </div>
+</div>
+
+<!-- ========== 战场界面 ========== -->
+<div id="game-screen" class="screen">
+  <div id="app">
+    <!-- 上方信息栏（0°- 火视角） -->
+    <div class="edge-info edge-top" id="edge-top">
+      <span class="edge-emoji"></span>
+      <span class="edge-text"></span>
+    </div>
+
+    <div id="mid-row">
+      <!-- 左方信息栏（-90°- 林视角） -->
+      <div class="edge-info edge-left" id="edge-left">
+        <span class="edge-emoji"></span>
+        <span class="edge-text"></span>
+      </div>
+
+      <!-- 棋盘区域 -->
+      <div id="board-wrapper">
+        <div id="board-container">
+          <svg id="board-svg"></svg>
+          <div class="center-zone" id="center-zone"></div>
+          <div id="points-layer"></div>
+          <div id="pieces-layer"></div>
+          <div id="traps-layer"></div>
+          <div id="effects-layer"></div>
+          <div id="arrows-layer"></div>
+        </div>
+        <div id="message-area"></div>
+        <div id="action-bar"></div>
+      </div>
+
+      <!-- 右方信息栏（90°- 风视角） -->
+      <div class="edge-info edge-right" id="edge-right">
+        <span class="edge-emoji"></span>
+        <span class="edge-text"></span>
+      </div>
+    </div>
+
+    <!-- 下方信息栏（180°- 山视角） -->
+    <div class="edge-info edge-bottom" id="edge-bottom">
+      <span class="edge-emoji"></span>
+      <span class="edge-text"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 弹窗 ========== -->
+<div id="start-overlay" class="overlay" style="display:none">
   <div class="overlay-content">
     <div class="overlay-icon">⚔️</div>
     <h2>行动顺序</h2>
     <div id="order-display"></div>
-    <button class="gold-btn" onclick="startGame()">开始对战</button>
+    <button class="gold-btn" onclick="startBattle()">开始对战</button>
   </div>
 </div>
 
-<!-- 胜利弹窗 -->
 <div id="victory-overlay" class="overlay" style="display:none">
   <div class="overlay-content">
     <span id="victory-emoji"></span>
     <h2 id="victory-message"></h2>
     <button class="gold-btn" onclick="restartGame()">再来一局</button>
+    <button class="gold-btn" onclick="backToMenu()" style="margin-top:8px;opacity:0.7;">返回菜单</button>
+  </div>
+</div>
+
+<!-- 排行榜 -->
+<div id="leaderboard-overlay" class="overlay" style="display:none">
+  <div class="overlay-content" style="max-width:420px;">
+    <h2>🏆 战绩记录</h2>
+    <div id="leaderboard-list"></div>
+    <button class="gold-btn" onclick="hideLeaderboard()" style="margin-top:12px;">关闭</button>
   </div>
 </div>
 
@@ -77,6 +136,8 @@
 <script src="js/board.js"></script>
 <script src="js/skills.js"></script>
 <script src="js/actions.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/leaderboard.js"></script>
 <script src="js/app.js"></script>
 
 </body>
