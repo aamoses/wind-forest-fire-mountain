@@ -12,6 +12,7 @@ let _pendingAnimations = [];
 
 function cacheDom() {
   dom.board = document.getElementById('board-container');
+  dom.turnIndicator = document.getElementById('turn-indicator');
   dom.svg = document.getElementById('board-svg');
   dom.centerZone = document.getElementById('center-zone');
   dom.pointsLayer = document.getElementById('points-layer');
@@ -255,11 +256,10 @@ function clearEdgeInfo() {
 function updateTrapezoid() {
   const cs = currentSide();
   if (!cs) { resetTrapezoid(); return; }
-  const board = dom.board;
-  if (!board) return;
+  const el = dom.turnIndicator;
+  if (!el) return;
 
-  // clip-path梯形：宽边=对应边，窄边=对边
-  const t = 8; // 缩进百分比
+  const t = 8;
   const clips = {
     top:    `polygon(${t}% 0%, ${100-t}% 0%, 100% 100%, 0% 100%)`,
     right:  `polygon(0% 0%, 100% ${t}%, 100% ${100-t}%, 0% 100%)`,
@@ -267,13 +267,13 @@ function updateTrapezoid() {
     left:   `polygon(0% ${t}%, 100% 0%, 100% 100%, 0% ${100-t}%)`,
   };
 
-  board.style.transition = 'clip-path 0.5s ease';
-  board.style.clipPath = clips[cs];
+  el.style.transition = 'clip-path 0.55s cubic-bezier(0.4, 0, 0.2, 1)';
+  el.style.clipPath = clips[cs];
 }
 
 function resetTrapezoid() {
-  if (dom.board) {
-    dom.board.style.clipPath = '';
+  if (dom.turnIndicator) {
+    dom.turnIndicator.style.clipPath = '';
   }
 }
 
@@ -346,6 +346,16 @@ function renderPoints() {
 function renderAllPieces() {
   let html = '';
   const cf = currentFaction();
+
+  // 阵营→边的反向映射（用于棋子旋转）
+  const factionSide = {};
+  if (gameState.sideFaction) {
+    for (const [side, f] of Object.entries(gameState.sideFaction)) {
+      factionSide[f] = side;
+    }
+  }
+  const sideRotation = { top: 180, right: 90, bottom: 0, left: -90 };
+
   for (const piece of gameState.pieces) {
     if (piece.hp <= 0) continue;
     const pt = pointById[piece.position];
@@ -354,7 +364,7 @@ function renderAllPieces() {
     const selClass = piece.id === gameState.selectedPieceId ? ' selected' : '';
     const curClass = (cf === piece.faction && gameState.phase === 'playing') ? ' current-faction' : '';
     const atkClass = (cf === 'mountain' && gameState._mountainAttacks?.includes(piece.position)) ? ' attackable' : '';
-    // HP点数圆点
+    const rot = sideRotation[factionSide[piece.faction]] || 0;
     let hpDots = '';
     for (let i = 0; i < piece.hp; i++) {
       hpDots += `<span class="piece-hp-dot"></span>`;
@@ -362,7 +372,7 @@ function renderAllPieces() {
     html += `<div class="piece ${piece.faction}${selClass}${curClass}${atkClass}" id="piece-${piece.id}"
       style="left:${x}px;top:${y}px"
       data-piece="${piece.id}">
-      <div class="piece-figure">${fac.emoji}</div>
+      <div class="piece-figure" style="transform:rotate(${rot}deg);">${fac.emoji}</div>
       <div class="piece-hp">${hpDots}</div>
       <div class="piece-base"></div>
     </div>`;

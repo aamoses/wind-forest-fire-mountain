@@ -255,14 +255,26 @@ body::before {
   border: 2px solid rgba(212,175,55,0.5);
   border-radius: 3px;
   cursor: default;
-  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
-  transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 0 0 1px rgba(212,175,55,0.1),
     0 0 0 8px rgba(6,5,2,0.55),
     0 0 50px rgba(212,175,55,0.06),
     0 0 120px rgba(0,0,0,0.7),
     inset 0 0 100px rgba(212,175,55,0.02);
+}
+
+/* 回合指示环 — 环绕棋盘的梯形边框 */
+#turn-indicator {
+  position: absolute;
+  top: -12px; left: -12px;
+  width: calc(100% + 24px); height: calc(100% + 24px);
+  pointer-events: none;
+  z-index: -1;
+  border: 3px solid rgba(212,175,55,0.5);
+  border-radius: 6px;
+  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+  transition: clip-path 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 20px rgba(212,175,55,0.2), 0 0 50px rgba(212,175,55,0.08);
 }
 #board-container::before,
 #board-container::after {

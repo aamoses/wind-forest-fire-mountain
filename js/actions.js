@@ -42,24 +42,8 @@ function onPieceClick(pieceId) {
   const cf = currentFaction();
   if (!cf) return;
 
-  // 山阵营特殊：已在走打一体模式时
-  if (cf === 'mountain' && gameState.actionMode === 'mountain') {
-    if (piece.faction !== 'mountain') {
-      const mPiece = gameState.pieces.find(p => p.id === gameState.mountainPieceId);
-      if (mPiece) {
-        const neighbors = ADJ[mPiece.position] || [];
-        if (neighbors.includes(piece.position)) {
-          handleMountainPointClick(piece.position);
-          return;
-        }
-      }
-      showMessage('该棋子不在攻击范围内（需相邻1格）');
-      return;
-    }
-    if (piece.faction === 'mountain') {
-      onMountainPieceClick(pieceId);
-      return;
-    }
+  // 只有当前回合是人类玩家时才能操作
+  if (!gameState.humanFactions || !gameState.humanFactions.includes(cf)) {
     return;
   }
 
@@ -109,6 +93,9 @@ function onPointClick(pointId) {
 
   const cf = currentFaction();
   if (!cf) return;
+
+  // 只有当前回合是人类玩家时才能操作
+  if (!gameState.humanFactions || !gameState.humanFactions.includes(cf)) return;
 
   const mode = gameState.actionMode;
 
