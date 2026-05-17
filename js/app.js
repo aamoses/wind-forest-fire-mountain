@@ -184,14 +184,14 @@ function startBattle() {
 const originalNextTurn = nextTurn;
 nextTurn = function() {
   originalNextTurn();
-  // 如果是AI回合，触发AI
+  if (gameState.simulating) return;
   setTimeout(() => AI.checkAndExecute(), 500);
 };
 
 const originalCheckAndNextTurn = checkAndNextTurn;
 checkAndNextTurn = function() {
   originalCheckAndNextTurn();
-  // 如果是AI回合，触发AI
+  if (gameState.simulating) return;
   setTimeout(() => AI.checkAndExecute(), 500);
 };
 
@@ -250,6 +250,7 @@ function runSimulation(speedMs = 200) {
   gameState.mode = 'quad';
   gameState.aiFactions = ['fire', 'forest', 'wind', 'mountain'];
   gameState.humanFactions = [];
+  gameState.simulating = true;
   gameState.phase = 'playing';
   gameState.startTime = Date.now();
   advanceToAliveFaction();

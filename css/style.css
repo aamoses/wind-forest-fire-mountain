@@ -427,6 +427,19 @@ body {
   text-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
+/* ---------- 山阵营步数指示器 ---------- */
+#mountain-counter {
+  font-size: 13px; color: #c9a44b; text-align: center;
+  padding: 4px 8px; letter-spacing: 1px;
+}
+.step-dots { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #60b8ff; box-shadow: 0 0 5px rgba(96,184,255,0.6);
+  display: inline-block; transition: all 0.2s;
+}
+.step-dot.used { background: rgba(96,184,255,0.15); box-shadow: none; }
+
 /* ---------- 弹窗 ---------- */
 .overlay {
   position: fixed;

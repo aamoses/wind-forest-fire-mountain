@@ -19,6 +19,7 @@ function cacheDom() {
   dom.arrowsLayer = document.getElementById('arrows-layer');
   dom.actionBar = document.getElementById('action-bar');
   dom.messageArea = document.getElementById('message-area');
+  dom.mountainCounter = document.getElementById('mountain-counter');
   dom.startOverlay = document.getElementById('start-overlay');
   dom.victoryOverlay = document.getElementById('victory-overlay');
   dom.orderDisplay = document.getElementById('order-display');
