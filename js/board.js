@@ -396,7 +396,7 @@ function renderAllPieces() {
       factionSide[f] = side;
     }
   }
-  const sideRotation = { top: 180, right: 90, bottom: 0, left: -90 };
+  const sideRotation = { top: 180, right: 0, bottom: 0, left: 0 };
 
   for (const piece of gameState.pieces) {
     if (piece.hp <= 0) continue;
